@@ -9,7 +9,7 @@ echo "🛠 Настройка прав для локальных утилит в
 chmod +x "$SCRIPT_DIR/bin/"* 2>/dev/null
 
 echo "🛠 Установка базовых системных зависимостей..."
-sudo apt update && sudo apt install -y nginx jq curl gzip
+sudo apt update && sudo apt install -y nginx jq curl gzip sudo
 
 # Создание структуры папок
 sudo mkdir -p "$REPO_ROOT/x86_64" "$REPO_ROOT/all"
@@ -28,6 +28,7 @@ server {
     location / {
         autoindex on;
         types {
+            text/html html;
             text/plain pub sig;
             application/json json;
         }
