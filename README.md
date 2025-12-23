@@ -22,14 +22,21 @@
 
 ### 1. Подготовка
 
-Склонируйте репозиторий и убедитесь, что в папке `bin/` находятся необходимые бинарники (вы уже скопировали их из `/root/deps`).
-
+Склонируйте репозиторий и убедитесь, что в папке `bin/` находятся необходимые бинарники.
+```bash
+apt install -y git sudo
+```
+```bash
+git clone https://github.com/EdvardBaldanov/OpenWrt-Repo-Manager-Portable.git
+```
 ### 2. Установка
 
 Запустите скрипт инициализации:
 
 ```bash
 chmod +x setup_repo.sh repo_update.sh
+```
+```bash\
 ./setup_repo.sh
 
 ```
