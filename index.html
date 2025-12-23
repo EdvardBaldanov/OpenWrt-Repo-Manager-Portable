@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>ASU OpenWrt Repo</title>
+    <style>
+        body{font-family:-apple-system,system-ui,sans-serif;max-width:900px;margin:40px auto;padding:20px;line-height:1.6;background:#f0f2f5;color:#1c1e21;}
+        .card{background:#fff;padding:25px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-bottom:25px;}
+        code{display:block;background:#24292e;color:#e1e4e8;padding:16px;margin:12px 0;border-radius:8px;font-family:'SFMono-Regular',monospace;white-space:pre-wrap;font-size:14px;}
+        h2{margin-top:0;color:#000;}
+        #log-view{background:#1b1d23;color:#a9b1d6;padding:16px;border-radius:8px;font-family:monospace;font-size:12px;max-height:450px;overflow-y:auto;white-space:pre-wrap;border:1px solid #333;}
+        .host{color:#ff79c6;font-weight:bold;}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🚀 Репозиторий ASU</h2>
+        <p>Для настройки роутера выполните команды:</p>
+        <code># 1. Добавление репозитория
+echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" > /etc/opkg/asu.conf
+echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/asu.conf
+
+# 2. Установка ключа подписи
+wget http://<span class="host"></span>/public.key -O /tmp/public.key
+opkg-key add /tmp/public.key
+
+# 3. Обновление списков
+opkg update</code>
+    </div>
+
+    <div class="card">
+        <h3>📄 Лог последних обновлений</h3>
+        <div id="log-view">Загрузка данных...</div>
+    </div>
+
+    <script>
+        const host = window.location.host;
+        document.querySelectorAll('.host').forEach(el => el.textContent = host);
+
+        async function refreshLog() {
+            try {
+                const r = await fetch('/update.log');
+                const t = await r.text();
+                const view = document.getElementById('log-view');
+                view.textContent = t.trim().split('\n').slice(-30).join('\n');
+                view.scrollTop = view.scrollHeight;
+            } catch (e) {
+                document.getElementById('log-view').textContent = "Лог обновляется или пуст...";
+            }
+        }
+        refreshLog();
+        setInterval(refreshLog, 10000);
+    </script>
+</body>
+</html>

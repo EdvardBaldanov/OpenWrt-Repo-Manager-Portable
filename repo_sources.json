@@ -1,0 +1,20 @@
+[
+  {
+    "name": "amneziawg",
+    "api_url": "https://api.github.com/repos/Slava-Shchipunov/awg-openwrt/releases/latest",
+    "filter_arch": "x86_64",
+    "exclude_asset_keywords": ["entware", "aarch64", "mips", "mipsel", "arm"]
+  },
+  {
+    "name": "podkop",
+    "api_url": "https://api.github.com/repos/itdoginfo/podkop/releases/latest",
+    "filter_arch": "all",
+    "exclude_asset_keywords": ["entware"]
+  },
+  {
+    "name": "nfqws",
+    "api_url": "https://api.github.com/repos/anonym-tsk/nfqws-keenetic/releases/latest",
+    "filter_arch": "all",
+    "exclude_asset_keywords": ["entware", "aarch64", "mips", "mipsel", "arm"]
+  }
+]
