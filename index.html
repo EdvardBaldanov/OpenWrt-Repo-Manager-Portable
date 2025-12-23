@@ -17,8 +17,8 @@
         <h2>🚀 Репозиторий OPKG OpenWrt(только ipk)</h2>
         <p>Для настройки роутера выполните команды:</p>
         <code># 1. Добавление репозитория
-echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" > /etc/opkg/asu.conf
-echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/asu.conf
+echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" > /etc/opkg/customfeeds.conf
+echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/customfeeds.conf
 
 # 2. Установка ключа подписи
 wget http://<span class="host"></span>/public.key -O /tmp/public.key
