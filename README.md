@@ -32,13 +32,14 @@ git clone https://github.com/EdvardBaldanov/OpenWrt-Repo-Manager-Portable.git
 ### 2. Установка
 
 Запустите скрипт инициализации:
-
+```bash
+cd OpenWrt-Repo-Manager-Portable
+```
 ```bash
 chmod +x setup_repo.sh repo_update.sh
 ```
 ```bash\
 ./setup_repo.sh
-
 ```
 
 Скрипт настроит Nginx, создаст ключи подписи и добавит задачу в Cron.
