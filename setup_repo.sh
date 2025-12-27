@@ -16,26 +16,12 @@ sudo mkdir -p "$REPO_ROOT/x86_64" "$REPO_ROOT/all"
 sudo chown -R $USER:$USER "$REPO_ROOT"
 
 echo "🌐 Настройка конфигурации Nginx (Root)..."
-sudo bash -c "cat << EOF > $NGINX_CONF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name _;
-
-    root $REPO_ROOT;
-    index index.html;
-
-    location / {
-        autoindex on;
-        types {
-            text/plain pub sig;
-            application/json json;
-        }
-        gzip_static on;
-        add_header Cache-Control 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
-    }
-}
-EOF"
+if [ -f "$SCRIPT_DIR/openwrt_repo.conf" ]; then
+    sudo cp "$SCRIPT_DIR/openwrt_repo.conf" "$NGINX_CONF"
+else
+    echo "❌ Ошибка: Файл конфигурации openwrt_repo.conf не найден!"
+    exit 1
+fi
 
 # Включение конфигурации
 [ ! -L "/etc/nginx/sites-enabled/openwrt_repo" ] && sudo ln -s "$NGINX_CONF" "/etc/nginx/sites-enabled/"
