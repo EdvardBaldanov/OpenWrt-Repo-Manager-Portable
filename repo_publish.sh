@@ -26,7 +26,7 @@ if [ ! -f "$REPO_SOURCES" ]; then
 fi
 
 # Получаем список уникальных архитектур из конфига
-ARCHS=$(jq -r '.filter_arch' "$REPO_SOURCES" | sort -u)
+ARCHS=$(jq -r '.[].filter_arch' "$REPO_SOURCES" | sort -u)
 
 for ARCH in $ARCHS; do
     TARGET_DIR="$REPO_ROOT/$ARCH"
