@@ -4,39 +4,161 @@
     <meta charset="UTF-8">
     <title>ASU OpenWrt Repo Manager</title>
     <style>
-        :root { --primary: #007bff; --bg: #f4f6f9; --card-bg: #fff; --text: #333; }
-        body { font-family: -apple-system, system-ui, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: var(--bg); color: var(--text); }
-        .container { display: grid; gap: 20px; }
-        .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        h2, h3 { margin-top: 0; }
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --code-bg: #111827;
+            --code-text: #e5e7eb;
+            --border: #e5e7eb;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+        .container { display: grid; gap: 24px; }
+        .card {
+            background: var(--card-bg);
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0,0,0,0.02);
+        }
+        h2 { margin-top: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 0.5em; }
+        h3 { margin-top: 0; font-size: 1.25rem; font-weight: 600; }
+        h4 { margin: 24px 0 8px; font-size: 1rem; font-weight: 600; color: var(--text-main); }
+        p { color: var(--text-muted); margin-bottom: 1.5em; }
         
         /* Tabs */
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { padding: 10px 20px; border-radius: 8px; cursor: pointer; background: #e9ecef; border: none; font-weight: 500; }
-        .tab.active { background: var(--primary); color: #fff; }
-        .tab-content { display: none; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 24px; padding: 4px; background: rgba(0,0,0,0.05); border-radius: 12px; width: fit-content; }
+        .tab {
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .tab:hover { color: var(--text-main); }
+        .tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Code & Log */
-        .code-wrapper { position: relative; margin: 10px 0; }
-        code, pre { background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 6px; overflow-x: auto; font-family: 'SFMono-Regular', monospace; }
-        #log-view { max-height: 400px; white-space: pre-wrap; font-size: 13px; }
+        /* Code Block */
+        .code-wrapper {
+            position: relative;
+            margin: 12px 0 24px;
+            background: var(--code-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+        code, pre {
+            display: block;
+            background: transparent;
+            color: var(--code-text);
+            padding: 20px;
+            padding-right: 70px; /* Отступ для кнопки */
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre; /* Важно для скролла */
+            margin: 0;
+            border: none;
+        }
+        /* Скроллбар для кода */
+        code::-webkit-scrollbar { height: 8px; }
+        code::-webkit-scrollbar-track { background: #1f2937; }
+        code::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+
+        /* Copy Button */
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.1);
+            color: #9ca3af;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: rgba(255,255,255,0.3); }
+
+        /* Editor & Log */
+        textarea#config-editor {
+            width: 100%;
+            height: 400px;
+            background: var(--code-bg);
+            color: #d1d5db;
+            font-family: monospace;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            box-sizing: border-box;
+            resize: vertical;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        textarea#config-editor:focus { outline: 2px solid var(--primary); border-color: transparent; }
         
-        /* Editor */
-        textarea#config-editor { width: 100%; height: 300px; background: #2d2d2d; color: #a9b7c6; font-family: monospace; border: 1px solid #444; border-radius: 6px; padding: 10px; box-sizing: border-box; resize: vertical; }
+        #log-view {
+            background: #111827;
+            color: #10b981; /* Зеленоватый терминальный цвет */
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid #374151;
+        }
         
         /* Buttons */
-        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; }
-        .btn-primary { background: #28a745; color: white; }
-        .btn-primary:hover { background: #218838; }
-        .btn-update { background: #007bff; color: white; }
-        .btn-update:hover { background: #0069d9; }
-        .copy-btn { position: absolute; top: 5px; right: 5px; background: rgba(255,255,255,0.1); color: #ccc; border: 1px solid #555; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+        
+        .btn-update { background: #10b981; color: white; }
+        .btn-update:hover { background: #059669; }
 
         /* Help Table */
-        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #f2f2f2; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f9fafb; font-weight: 600; color: var(--text-main); }
+        td { background: #fff; }
+        tr:last-child td { border-bottom: none; }
+        code.inline { padding: 2px 6px; background: #f3f4f6; color: #db2777; border-radius: 4px; font-family: monospace; font-size: 0.9em; display: inline; border: 1px solid #e5e7eb; }
     </style>
 </head>
 <body>
@@ -110,10 +232,10 @@ opkg update</code>
                 <table>
                     <thead><tr><th>Поле</th><th>Описание</th><th>Пример</th></tr></thead>
                     <tbody>
-                        <tr><td><code>name</code></td><td>Имя пакета (для логов и группировки)</td><td><code>"amneziawg"</code></td></tr>
-                        <tr><td><code>api_url</code></td><td>GitHub API URL (latest release)</td><td><code>".../releases/latest"</code></td></tr>
-                        <tr><td><code>filter_arch</code></td><td>Архитектура репозитория, куда класть файлы</td><td><code>"x86_64"</code> или <code>"all"</code></td></tr>
-                        <tr><td><code>exclude_asset_keywords</code></td><td>Исключать файл, если имя содержит эти слова</td><td><code>["entware", "mips"]</code></td></tr>
+                        <tr><td><code class="inline">name</code></td><td>Имя пакета (для логов и группировки)</td><td><code class="inline">"amneziawg"</code></td></tr>
+                        <tr><td><code class="inline">api_url</code></td><td>GitHub API URL (latest release)</td><td><code class="inline">".../releases/latest"</code></td></tr>
+                        <tr><td><code class="inline">filter_arch</code></td><td>Архитектура репозитория, куда класть файлы</td><td><code class="inline">"x86_64"</code> или <code class="inline">"all"</code></td></tr>
+                        <tr><td><code class="inline">exclude_asset_keywords</code></td><td>Исключать файл, если имя содержит эти слова</td><td><code class="inline">["entware", "mips"]</code></td></tr>
                     </tbody>
                 </table>
             </div>
