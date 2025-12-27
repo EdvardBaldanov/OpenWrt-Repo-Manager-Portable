@@ -44,7 +44,7 @@ for ARCH in $ARCHS; do
     
     # 2. Подпись (если есть ключ)
     if [ -f "$SECRET_KEY" ]; then
-        "$USIGN" -S -m Packages -s "$SECRET_KEY" -c "ASU Repo"
+        "$USIGN" -S -m Packages -s "$SECRET_KEY" -c "Custom Repo"
     else
         log "   ⚠️  [PUB] Секретный ключ не найден, индекс не подписан!"
     fi

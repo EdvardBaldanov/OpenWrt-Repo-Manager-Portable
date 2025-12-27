@@ -1,5 +1,5 @@
 #!/bin/bash
-# Скрипт развертывания ASU Repo (Portable версия + Dashboard)
+# Скрипт развертывания OpenWrt Repo (Portable версия + Dashboard)
 
 REPO_ROOT="/var/www/openwrt_repo"
 NGINX_CONF="/etc/nginx/sites-available/openwrt_repo"

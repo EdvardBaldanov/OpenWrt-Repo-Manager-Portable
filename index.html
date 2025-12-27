@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>ASU OpenWrt Repo Manager</title>
+    <title>OpenWrt Repo Manager</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -172,14 +172,14 @@
         <!-- Client Setup Tab -->
         <div id="client" class="tab-content active">
             <div class="card">
-                <h2>🚀 Подключение репозитория</h2>
+                <h2>🚀 Custom Репозиторий</h2>
                 <p>Выполните эти команды на роутере:</p>
 
                 <h4>1. Добавление источников</h4>
                 <div class="code-wrapper">
                     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                    <code>echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" > /etc/opkg/asu.conf
-echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/asu.conf</code>
+                    <code>echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" >> /etc/opkg/customfeeds.conf
+echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/customfeeds.conf</code>
                 </div>
 
                 <h4>2. Ключ подписи</h4>
@@ -196,9 +196,12 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/asu.
 
                 <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
                 <h3>🗑️ Удаление</h3>
+                <p>Для удаления удалите соответствующие строки из <code>/etc/opkg/customfeeds.conf</code> и выполните:</p>
                 <div class="code-wrapper">
                     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                    <code>rm /etc/opkg/asu.conf /var/opkg-lists/custom_*
+                    <code>sed -i '/custom_x86_64/d' /etc/opkg/customfeeds.conf
+sed -i '/custom_all/d' /etc/opkg/customfeeds.conf
+rm /var/opkg-lists/custom_*
 opkg update</code>
                 </div>
             </div>
