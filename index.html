@@ -6,8 +6,12 @@
     <style>
         body{font-family:-apple-system,system-ui,sans-serif;max-width:900px;margin:40px auto;padding:20px;line-height:1.6;background:#f0f2f5;color:#1c1e21;}
         .card{background:#fff;padding:25px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-bottom:25px;}
-        code{display:block;background:#24292e;color:#e1e4e8;padding:16px;margin:12px 0;border-radius:8px;font-family:'SFMono-Regular',monospace;white-space:pre-wrap;font-size:14px;}
+        .code-wrapper{position:relative;margin:12px 0;}
+        code{display:block;background:#24292e;color:#e1e4e8;padding:16px;padding-top:36px;border-radius:8px;font-family:'SFMono-Regular',monospace;white-space:pre-wrap;font-size:14px;}
+        .copy-btn{position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;transition:all 0.2s;}
+        .copy-btn:hover{background:rgba(255,255,255,0.2);color:#fff;}
         h2{margin-top:0;color:#000;}
+        h4{margin:20px 0 8px;color:#444;}
         #log-view{background:#1b1d23;color:#a9b1d6;padding:16px;border-radius:8px;font-family:monospace;font-size:12px;max-height:450px;overflow-y:auto;white-space:pre-wrap;border:1px solid #333;}
         .host{color:#ff79c6;font-weight:bold;}
     </style>
@@ -16,16 +20,26 @@
     <div class="card">
         <h2>🚀 Репозиторий ASU</h2>
         <p>Для настройки роутера выполните команды:</p>
-        <code># 1. Добавление репозитория
-echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" > /etc/opkg/asu.conf
-echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/asu.conf
 
-# 2. Установка ключа подписи
-wget http://<span class="host"></span>/public.key -O /tmp/public.key
-opkg-key add /tmp/public.key
+        <h4>1. Добавление репозитория</h4>
+        <div class="code-wrapper">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code>echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" > /etc/opkg/asu.conf
+echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/asu.conf</code>
+        </div>
 
-# 3. Обновление списков
-opkg update</code>
+        <h4>2. Установка ключа подписи</h4>
+        <div class="code-wrapper">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code>wget http://<span class="host"></span>/public.key -O /tmp/public.key
+opkg-key add /tmp/public.key</code>
+        </div>
+
+        <h4>3. Обновление списков</h4>
+        <div class="code-wrapper">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code>opkg update</code>
+        </div>
     </div>
 
     <div class="card">
@@ -48,6 +62,47 @@ opkg update</code>
                 document.getElementById('log-view').textContent = "Лог обновляется или пуст...";
             }
         }
+        
+        function copyCode(btn) {
+            const codeBlock = btn.nextElementSibling;
+            const text = codeBlock.innerText;
+            
+            // Fallback for non-secure contexts (http) {
+            if (!navigator.clipboard) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCopied(btn);
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                }
+                document.body.removeChild(textArea);
+                return;
+            }
+
+            navigator.clipboard.writeText(text).then(() => {
+                showCopied(btn);
+            }, (err) => {
+                console.error('Async: Could not copy text: ', err);
+            });
+        }
+
+        function showCopied(btn) {
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.style.borderColor = '#4caf50';
+            btn.style.color = '#4caf50';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.borderColor = 'rgba(255,255,255,0.2)';
+                btn.style.color = '#aaa';
+            }, 2000);
+        }
+
         refreshLog();
         setInterval(refreshLog, 10000);
     </script>
