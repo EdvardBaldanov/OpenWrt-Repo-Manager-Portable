@@ -57,6 +57,18 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Code Block */
+        /* Default inline code (строчный код) */
+        code {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.9em;
+            padding: 2px 6px;
+            background: #f3f4f6; /* Светло-серый фон для контраста */
+            color: #1f2937;       /* Темно-серый текст */
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+
+        /* Block code inside wrapper (темные блоки с кодом) */
         .code-wrapper {
             position: relative;
             margin: 12px 0 24px;
@@ -65,13 +77,13 @@
             overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
         }
-        code, pre {
+
+        .code-wrapper code {
             display: block;
             background: transparent;
             color: var(--code-text);
             padding: 20px;
             padding-right: 70px; /* Отступ для кнопки */
-            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
             font-size: 14px;
             line-height: 1.5;
             overflow-x: auto;
@@ -79,6 +91,9 @@
             margin: 0;
             border: none;
         }
+        
+        pre { margin: 0; }
+        
         /* Скроллбар для кода */
         code::-webkit-scrollbar { height: 8px; }
         code::-webkit-scrollbar-track { background: #1f2937; }
@@ -235,10 +250,10 @@ opkg update</code>
                 <table>
                     <thead><tr><th>Поле</th><th>Описание</th><th>Пример</th></tr></thead>
                     <tbody>
-                        <tr><td><code class="inline">name</code></td><td>Имя пакета (для логов и группировки)</td><td><code class="inline">"amneziawg"</code></td></tr>
-                        <tr><td><code class="inline">api_url</code></td><td>GitHub API URL (latest release)</td><td><code class="inline">".../releases/latest"</code></td></tr>
-                        <tr><td><code class="inline">filter_arch</code></td><td>Архитектура репозитория, куда класть файлы</td><td><code class="inline">"x86_64"</code> или <code class="inline">"all"</code></td></tr>
-                        <tr><td><code class="inline">exclude_asset_keywords</code></td><td>Исключать файл, если имя содержит эти слова</td><td><code class="inline">["entware", "mips"]</code></td></tr>
+                        <tr><td><code>name</code></td><td>Имя пакета (для логов и группировки)</td><td><code>"amneziawg"</code></td></tr>
+                        <tr><td><code>api_url</code></td><td>GitHub API URL (latest release)</td><td><code>".../releases/latest"</code></td></tr>
+                        <tr><td><code>filter_arch</code></td><td>Архитектура репозитория, куда класть файлы</td><td><code>"x86_64"</code> или <code>"all"</code></td></tr>
+                        <tr><td><code>exclude_asset_keywords</code></td><td>Исключать файл, если имя содержит эти слова</td><td><code>["entware", "mips"]</code></td></tr>
                     </tbody>
                 </table>
             </div>
