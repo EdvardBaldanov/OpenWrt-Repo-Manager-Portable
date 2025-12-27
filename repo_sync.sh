@@ -50,10 +50,25 @@ jq -c '.[]' "$REPO_SOURCES" | while read -r pkg; do
         EXCLUDES=$(jq -r '.exclude_asset_keywords | join("|")' <<< "$pkg")
         [[ -n "$EXCLUDES" && "$FILE" =~ ($EXCLUDES) ]] && continue
         
-        # Валидация архитектуры
+        # Валидация архитектуры (Универсальная)
         IS_OK=false
-        [[ "$ARCH" == "all" && "$FILE" =~ (all|_all_|luci-i18n) ]] && IS_OK=true
-        [[ "$ARCH" == "x86_64" && "$FILE" =~ (x86_64|all|_all_) ]] && IS_OK=true
+
+        if [[ "$ARCH" == "all" ]]; then
+            # Для all берем пакеты без архитектуры или явно помеченные как all/noarch
+            [[ "$FILE" =~ (all|_all_|noarch|luci-) ]] && IS_OK=true
+        else
+            # Для конкретных архитектур ищем подстроку в имени файла
+            # Например, если ARCH="mips_24kc", то файл "curl_..._mips_24kc.ipk" подойдет
+            [[ "$FILE" == *"$ARCH"* ]] && IS_OK=true
+            
+            # Совместимость: x86_64 часто называют amd64
+            [[ "$ARCH" == "x86_64" && "$FILE" =~ (amd64) ]] && IS_OK=true
+            
+            # Опционально: можно разрешить класть 'all' пакеты и в специфичные папки, 
+            # но лучше держать их отдельно. Если нужно - раскомментируйте строку ниже:
+            # [[ "$FILE" =~ (all|_all_|noarch) ]] && IS_OK=true
+        fi
+
         [ "$IS_OK" = false ] && continue
 
         if [ ! -f "$TARGET_DIR/$FILE" ]; then
