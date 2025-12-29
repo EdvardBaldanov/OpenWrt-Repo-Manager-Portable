@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 import json
 import subprocess
 from flask import Flask, request, jsonify
@@ -9,7 +10,7 @@ app = Flask(__name__)
 # Пути
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, 'repo_sources.json')
-UPDATE_SCRIPT = os.path.join(BASE_DIR, 'repo_update.sh')
+UPDATE_SCRIPT = os.path.join(BASE_DIR, 'repo_update.py')
 LOG_FILE = os.path.join(BASE_DIR, 'update.log')
 
 @app.route('/api/config', methods=['GET'])
@@ -43,7 +44,7 @@ def trigger_update():
     """Запускает скрипт обновления в фоне."""
     try:
         # Запускаем скрипт обновления
-        subprocess.Popen(['/bin/bash', UPDATE_SCRIPT], cwd=BASE_DIR)
+        subprocess.Popen([sys.executable, UPDATE_SCRIPT], cwd=BASE_DIR)
         return jsonify({"status": "Update started"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
