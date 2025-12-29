@@ -110,7 +110,7 @@
         .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: rgba(255,255,255,0.3); }
 
         /* Editor & Log */
-        textarea#config-editor {
+        textarea#config-editor, textarea#tracking-editor {
             width: 100%;
             height: 400px;
             background: var(--code-bg);
@@ -124,7 +124,7 @@
             font-size: 14px;
             line-height: 1.5;
         }
-        textarea#config-editor:focus { outline: 2px solid var(--primary); border-color: transparent; }
+        textarea#config-editor:focus, textarea#tracking-editor:focus { outline: 2px solid var(--primary); border-color: transparent; }
         
         #log-view {
             background: #111827;
@@ -229,18 +229,24 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
         <div id="manager" class="tab-content">
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
-                    <h2>⚙️ Управление источниками</h2>
+                    <h2>📝 Список отслеживания (Tracking)</h2>
                     <div>
                         <button class="btn btn-scan" onclick="openDiscovery()">🔎 Сканер (Discovery)</button>
                         <button class="btn btn-update" onclick="runUpdate()">🔄 Обновить репо</button>
                     </div>
                 </div>
-                
-                <textarea id="config-editor"></textarea>
+                <p style="font-size: 13px; margin-top:-10px;">Добавляйте по одному <code>owner/repo</code> или URL релиза на строку. Сохраните, затем запустите Сканер.</p>
+                <textarea id="tracking-editor" placeholder="owner/repo&#10;https://github.com/user/repo"></textarea>
                 <div style="margin-top: 10px; text-align: right;">
-                    <span id="save-status" style="margin-right: 10px; font-size: 14px; color: #666;"></span>
-                    <button class="btn btn-primary" onclick="saveConfig()">💾 Сохранить изменения</button>
+                    <span id="tracking-status" style="margin-right: 10px; font-size: 14px; color: #666;"></span>
+                    <button class="btn btn-primary" onclick="saveTracking()">💾 Сохранить список</button>
                 </div>
+            </div>
+
+            <div class="card">
+                <h3>⚙️ Сгенерированный конфиг (Sources)</h3>
+                <p style="font-size: 13px;">Технический файл <code>repo_sources.json</code>. Обновляется автоматически после Сканера.</p>
+                <textarea id="config-editor" readonly style="height: 200px; opacity: 0.8;"></textarea>
             </div>
 
             <div class="card">
@@ -333,37 +339,53 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
             if(id === 'settings') loadSettings();
         }
 
-        // --- Config Logic ---
+        // --- Config & Tracking Logic ---
         async function loadConfig() {
             try {
-                const res = await fetch('/api/config');
-                currentConfig = await res.json();
+                // Load Tracking List
+                const resTrack = await fetch('/api/tracking');
+                const textTrack = await resTrack.text();
+                document.getElementById('tracking-editor').value = textTrack;
+
+                // Load Generated Config
+                const resConf = await fetch('/api/config');
+                currentConfig = await resConf.json();
                 document.getElementById('config-editor').value = JSON.stringify(currentConfig, null, 2);
             } catch (e) { console.error('Error loading config', e); }
         }
 
-        async function saveConfig() {
+        async function saveTracking() {
             const btn = document.querySelector('.btn-primary');
-            const status = document.getElementById('save-status');
+            const status = document.getElementById('tracking-status');
             try {
-                const text = document.getElementById('config-editor').value;
-                const json = JSON.parse(text);
-                
+                const text = document.getElementById('tracking-editor').value;
                 btn.disabled = true;
-                const res = await fetch('/api/config', {
+                const res = await fetch('/api/tracking', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(json)
+                    body: text
                 });
                 if(res.ok) {
-                    status.textContent = "Сохранено!"; status.style.color = "green";
-                    currentConfig = json;
+                    status.textContent = "Список сохранен!"; status.style.color = "green";
                 } else throw new Error("Save failed");
             } catch (e) {
                 status.textContent = "Ошибка: " + e.message; status.style.color = "red";
             } finally {
                 setTimeout(() => { status.textContent = ""; btn.disabled = false; }, 3000);
             }
+        }
+
+        async function saveConfig() {
+            // Internal save for repo_sources.json (used by discovery)
+            try {
+                const text = document.getElementById('config-editor').value;
+                const json = JSON.parse(text);
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(json)
+                });
+                if(res.ok) currentConfig = json;
+            } catch (e) { console.error("Internal config save failed", e); }
         }
 
         // --- Settings Logic ---
@@ -669,6 +691,7 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
             document.getElementById('config-editor').value = JSON.stringify(currentConfig, null, 2);
             closeDiscovery();
             saveConfig(); // Auto save
+            setTimeout(loadConfig, 500); // Reload views to reflect changes
             alert("Конфигурация обновлена! 'selected_assets' и 'last_tag' актуализированы.");
         }
 

@@ -19,9 +19,32 @@ def get_base_path():
 # Пути
 BASE_DIR = get_base_path()
 SOURCES_FILE = os.path.join(BASE_DIR, 'repo_sources.json')
+TRACKING_FILE = os.path.join(BASE_DIR, 'repo_tracking.list')
 GLOBAL_CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
 UPDATE_SCRIPT = os.path.join(BASE_DIR, 'repo_update.py')
 LOG_FILE = os.path.join(BASE_DIR, 'update.log')
+
+@app.route('/api/tracking', methods=['GET'])
+def get_tracking():
+    """Читает список отслеживаемых репозиториев."""
+    try:
+        if os.path.exists(TRACKING_FILE):
+            with open(TRACKING_FILE, 'r', encoding='utf-8') as f:
+                return f.read()
+        return ""
+    except Exception as e:
+        return str(e), 500
+
+@app.route('/api/tracking', methods=['POST'])
+def save_tracking():
+    """Сохраняет список отслеживаемых репозиториев."""
+    try:
+        new_data = request.data.decode('utf-8')
+        with open(TRACKING_FILE, 'w', encoding='utf-8') as f:
+            f.write(new_data)
+        return jsonify({"status": "saved"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
