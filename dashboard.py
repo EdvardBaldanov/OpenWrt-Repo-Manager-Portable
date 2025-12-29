@@ -48,7 +48,7 @@ def save_config():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/settings', methods=['GET', 'POST'])
+@app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
     """Управление глобальными настройками (GitHub Token)."""
     if request.method == 'GET':

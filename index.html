@@ -364,7 +364,7 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
         // --- Settings Logic ---
         async function loadSettings() {
             try {
-                const res = await fetch('/settings');
+                const res = await fetch('/api/settings');
                 const data = await res.json();
                 const input = document.getElementById('gh-token');
                 if (data.has_token) {
@@ -378,7 +378,7 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
             const token = document.getElementById('gh-token').value;
             // Removed empty check to allow clearing token
             try {
-                const res = await fetch('/settings', {
+                const res = await fetch('/api/settings', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({github_token: token})
