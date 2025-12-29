@@ -7,7 +7,13 @@ from pathlib import Path
 # Обертка для полного цикла обновления (Sync + Publish)
 # Используется в Cron для регулярного обновления.
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+# Portable path helper
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent
+
+SCRIPT_DIR = get_base_path()
 
 def run_script(script_name):
     """Запуск Python скрипта из той же директории."""

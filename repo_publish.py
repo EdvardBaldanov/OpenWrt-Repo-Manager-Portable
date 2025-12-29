@@ -8,8 +8,14 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+# Portable path helper
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent
+
 # Константы
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = get_base_path()
 REPO_SOURCES = SCRIPT_DIR / "repo_sources.json"
 REPO_ROOT = Path("/var/www/openwrt_repo")
 SECRET_KEY = SCRIPT_DIR / "secret.key"

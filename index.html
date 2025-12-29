@@ -57,18 +57,15 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Code Block */
-        /* Default inline code (строчный код) */
         code {
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
             font-size: 0.9em;
             padding: 2px 6px;
-            background: #f3f4f6; /* Светло-серый фон для контраста */
-            color: #1f2937;       /* Темно-серый текст */
+            background: #f3f4f6; 
+            color: #1f2937;
             border-radius: 4px;
             border: 1px solid #e5e7eb;
         }
-
-        /* Block code inside wrapper (темные блоки с кодом) */
         .code-wrapper {
             position: relative;
             margin: 12px 0 24px;
@@ -77,24 +74,19 @@
             overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
         }
-
         .code-wrapper code {
             display: block;
             background: transparent;
             color: var(--code-text);
             padding: 20px;
-            padding-right: 70px; /* Отступ для кнопки */
+            padding-right: 70px;
             font-size: 14px;
             line-height: 1.5;
             overflow-x: auto;
-            white-space: pre; /* Важно для скролла */
+            white-space: pre;
             margin: 0;
             border: none;
         }
-        
-        pre { margin: 0; }
-        
-        /* Скроллбар для кода */
         code::-webkit-scrollbar { height: 8px; }
         code::-webkit-scrollbar-track { background: #1f2937; }
         code::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
@@ -136,7 +128,7 @@
         
         #log-view {
             background: #111827;
-            color: #10b981; /* Зеленоватый терминальный цвет */
+            color: #10b981;
             padding: 20px;
             border-radius: 8px;
             font-family: monospace;
@@ -166,6 +158,9 @@
         
         .btn-update { background: #10b981; color: white; }
         .btn-update:hover { background: #059669; }
+        
+        .btn-scan { background: #6366f1; color: white; }
+        .btn-scan:hover { background: #4f46e5; }
 
         /* Help Table */
         table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -173,13 +168,27 @@
         th { background: #f9fafb; font-weight: 600; color: var(--text-main); }
         td { background: #fff; }
         tr:last-child td { border-bottom: none; }
-        code.inline { padding: 2px 6px; background: #f3f4f6; color: #db2777; border-radius: 4px; font-family: monospace; font-size: 0.9em; display: inline; border: 1px solid #e5e7eb; }
+        
+        /* Modal */
+        #discovery-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto; backdrop-filter: blur(2px); }
+        .modal-card { margin: 50px auto; max-width: 900px; position:relative; animation: slideUp 0.3s ease; background: var(--card-bg); padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .discovery-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .discovery-header { font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .asset-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+        .asset-item { font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 4px; background: #f9fafb; border-radius: 4px; }
+        .asset-item:hover { background: #e5e7eb; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #e5e7eb; color: #4b5563; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
     </style>
 </head>
 <body>
     <div class="tabs">
         <button class="tab active" onclick="showTab('client')">📡 Клиент (Роутер)</button>
         <button class="tab" onclick="showTab('manager')">⚙️ Управление</button>
+        <button class="tab" onclick="showTab('settings')">🔑 Настройки</button>
         <button class="tab" onclick="showTab('help')">❓ Справка</button>
     </div>
 
@@ -208,26 +217,18 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                     <code>opkg update</code>
                 </div>
-
-                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-                <h3>🗑️ Удаление</h3>
-                <p>Для удаления удалите соответствующие строки из <code>/etc/opkg/customfeeds.conf</code> и выполните:</p>
-                <div class="code-wrapper">
-                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                    <code>sed -i '/custom_x86_64/d' /etc/opkg/customfeeds.conf
-sed -i '/custom_all/d' /etc/opkg/customfeeds.conf
-rm /var/opkg-lists/custom_*
-opkg update</code>
-                </div>
             </div>
         </div>
 
         <!-- Manager Tab -->
         <div id="manager" class="tab-content">
             <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
                     <h2>⚙️ Управление источниками</h2>
-                    <button class="btn btn-update" onclick="runUpdate()">🔄 Запустить обновление (Update & Publish)</button>
+                    <div>
+                        <button class="btn btn-scan" onclick="openDiscovery()">🔎 Сканер (Discovery)</button>
+                        <button class="btn btn-update" onclick="runUpdate()">🔄 Обновить репо</button>
+                    </div>
                 </div>
                 
                 <textarea id="config-editor"></textarea>
@@ -242,59 +243,97 @@ opkg update</code>
                 <pre id="log-view">Загрузка лога...</pre>
             </div>
         </div>
+        
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="card">
+                <h2>🔑 Глобальные настройки</h2>
+                <div style="max-width: 600px;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display:block; font-weight:600; margin-bottom:8px;">GitHub Personal Access Token</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="password" id="gh-token" placeholder="ghp_..." style="flex: 1; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                            <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
+                        </div>
+                        <p style="font-size:13px; color: var(--text-muted); margin-top:8px;">
+                            Токен нужен для обхода лимитов API GitHub (60 запросов/час -> 5000/час).<br>
+                            <a href="https://github.com/settings/tokens" target="_blank" style="color: var(--primary);">Получить токен</a> (нужны права только на чтение публичных репозиториев).
+                        </p>
+                    </div>
+                    <div id="settings-status"></div>
+                </div>
+            </div>
+        </div>
 
         <!-- Help Tab -->
         <div id="help" class="tab-content">
             <div class="card">
                 <h3>📘 Справка по repo_sources.json</h3>
                 <table>
-                    <thead><tr><th>Поле</th><th>Описание</th><th>Пример</th></tr></thead>
+                    <thead><tr><th>Поле</th><th>Описание</th></tr></thead>
                     <tbody>
-                        <tr><td><code>name</code></td><td>Имя пакета (для логов и группировки)</td><td><code>"amneziawg"</code></td></tr>
-                        <tr><td><code>api_url</code></td><td>GitHub API URL (latest release)</td><td><code>".../releases/latest"</code></td></tr>
-                        <tr><td><code>filter_arch</code></td><td>Архитектура репозитория, куда класть файлы</td><td><code>"x86_64"</code> или <code>"all"</code></td></tr>
-                        <tr><td><code>exclude_asset_keywords</code></td><td>Исключать файл, если имя содержит эти слова</td><td><code>["entware", "mips"]</code></td></tr>
+                        <tr><td><code>name</code></td><td>Имя (для логов).</td></tr>
+                        <tr><td><code>api_url</code></td><td>URL GitHub API (latest release).</td></tr>
+                        <tr><td><code>filter_arch</code></td><td>Целевая архитектура (x86_64, all).</td></tr>
+                        <tr><td><code>exclude_asset_keywords</code></td><td>Исключать файлы по словам.</td></tr>
+                        <tr><td><code>selected_assets</code></td><td><b>Новое:</b> Список конкретных файлов для скачивания (приоритет над фильтрами). Заполняется Сканером.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- Discovery Modal -->
+    <div id="discovery-modal">
+        <div class="card modal-card">
+            <span onclick="closeDiscovery()" style="position:absolute; top:20px; right:20px; cursor:pointer; font-size:24px;">&times;</span>
+            <h2>🔎 Умный Сканер</h2>
+            <p>Анализирует репозитории из вашего конфига и находит доступные пакеты.</p>
+            
+            <div style="margin-bottom:20px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+                <label style="margin-right: 15px;">
+                    <input type="checkbox" id="force-scan"> Принудительно (Force Refresh)
+                </label>
+                <button class="btn btn-primary" id="start-scan-btn" onclick="runDiscovery()">🚀 Запустить сканирование</button>
+            </div>
+            
+            <div id="discovery-loader" style="display:none; text-align:center; padding: 20px;">
+                <div style="font-size: 24px;">⏳</div>
+                <p>Сканирование... Это может занять время.</p>
+            </div>
+
+            <div id="discovery-results"></div>
+            
+            <div id="discovery-actions" style="display:none; margin-top:20px; text-align:right; border-top: 1px solid #eee; padding-top: 20px;">
+                 <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Отметьте файлы, которые хотите "закрепить" в конфиге. Если ничего не выбрано для репозитория, будет работать старая логика (regex/filter).</p>
+                 <button class="btn btn-update" onclick="applyDiscovery()">✅ Применить выбранное</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Setup Hostname
         const host = window.location.host;
         document.querySelectorAll('.host').forEach(el => el.textContent = host);
 
-        // Tabs Logic
+        let currentConfig = [];
+        let discoveredData = [];
+
         function showTab(id) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             event.target.classList.add('active');
             document.getElementById(id).classList.add('active');
+            
             if(id === 'manager') loadConfig();
+            if(id === 'settings') loadSettings();
         }
 
-        // Copy Function
-        function copyCode(btn) {
-            const text = btn.nextElementSibling.innerText;
-            if (!navigator.clipboard) {
-                 const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-                 showCopied(btn);
-            } else {
-                navigator.clipboard.writeText(text).then(() => showCopied(btn));
-            }
-        }
-        function showCopied(btn) {
-            const orig = btn.innerText; btn.innerText = 'Copied!'; btn.style.color = '#4caf50';
-            setTimeout(() => { btn.innerText = orig; btn.style.color = '#ccc'; }, 2000);
-        }
-
-        // API Functions
+        // --- Config Logic ---
         async function loadConfig() {
             try {
                 const res = await fetch('/api/config');
-                const data = await res.json();
-                document.getElementById('config-editor').value = JSON.stringify(data, null, 2);
+                currentConfig = await res.json();
+                document.getElementById('config-editor').value = JSON.stringify(currentConfig, null, 2);
             } catch (e) { console.error('Error loading config', e); }
         }
 
@@ -303,7 +342,7 @@ opkg update</code>
             const status = document.getElementById('save-status');
             try {
                 const text = document.getElementById('config-editor').value;
-                const json = JSON.parse(text); // Validate JSON
+                const json = JSON.parse(text);
                 
                 btn.disabled = true;
                 const res = await fetch('/api/config', {
@@ -311,42 +350,199 @@ opkg update</code>
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(json)
                 });
-                
                 if(res.ok) {
-                    status.textContent = "Сохранено!";
-                    status.style.color = "green";
-                } else {
-                    throw new Error("Save failed");
-                }
+                    status.textContent = "Сохранено!"; status.style.color = "green";
+                    currentConfig = json;
+                } else throw new Error("Save failed");
             } catch (e) {
-                status.textContent = "Ошибка: " + e.message;
-                status.style.color = "red";
+                status.textContent = "Ошибка: " + e.message; status.style.color = "red";
             } finally {
                 setTimeout(() => { status.textContent = ""; btn.disabled = false; }, 3000);
             }
         }
 
-        async function runUpdate() {
-            if(!confirm("Запустить обновление пакетов и пересборку индексов?")) return;
+        // --- Settings Logic ---
+        async function loadSettings() {
             try {
-                const res = await fetch('/api/update', { method: 'POST' });
-                alert("Обновление запущено в фоне. Следите за логом.");
-                refreshLog();
-            } catch(e) { alert("Ошибка запуска: " + e); }
+                const res = await fetch('/settings');
+                const data = await res.json();
+                const input = document.getElementById('gh-token');
+                if (data.has_token) {
+                    input.placeholder = "Токен установлен (" + data.github_token + ")";
+                    input.value = ""; 
+                }
+            } catch(e) {}
         }
 
+        async function saveSettings() {
+            const token = document.getElementById('gh-token').value;
+            if(!token) return;
+            try {
+                const res = await fetch('/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({github_token: token})
+                });
+                if(res.ok) {
+                    alert("Настройки сохранены");
+                    document.getElementById('gh-token').value = "";
+                    loadSettings();
+                }
+            } catch(e) { alert("Ошибка сохранения"); }
+        }
+
+        // --- Discovery Logic ---
+        function openDiscovery() {
+            document.getElementById('discovery-modal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            if(document.getElementById('config-editor').value) {
+                try {
+                   currentConfig = JSON.parse(document.getElementById('config-editor').value);
+                } catch(e) {}
+            }
+        }
+        function closeDiscovery() {
+            document.getElementById('discovery-modal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function runDiscovery() {
+            const force = document.getElementById('force-scan').checked;
+            document.getElementById('discovery-loader').style.display = 'block';
+            document.getElementById('discovery-results').innerHTML = '';
+            document.getElementById('discovery-actions').style.display = 'none';
+            document.getElementById('start-scan-btn').disabled = true;
+
+            try {
+                // Save current config first to ensure backend uses latest list
+                await saveConfig(); 
+                
+                const res = await fetch(`/api/discover?force=${force}`);
+                const data = await res.json();
+                discoveredData = data;
+                renderDiscovery(data);
+                document.getElementById('discovery-actions').style.display = 'block';
+            } catch(e) {
+                document.getElementById('discovery-results').innerHTML = `<p style="color:red">Ошибка: ${e.message}</p>`;
+            } finally {
+                document.getElementById('discovery-loader').style.display = 'none';
+                document.getElementById('start-scan-btn').disabled = false;
+            }
+        }
+
+        function renderDiscovery(data) {
+            const container = document.getElementById('discovery-results');
+            container.innerHTML = '';
+            
+            if (data.error) {
+                container.innerHTML = `<p style="color:red">${data.error}</p>`;
+                return;
+            }
+
+            data.forEach((repo, repoIndex) => {
+                const div = document.createElement('div');
+                div.className = 'discovery-item';
+                
+                let statusBadge = '';
+                if(repo.status === 'skipped') statusBadge = '<span class="badge">Кэш (без изменений)</span>';
+                else if(repo.error) statusBadge = '<span class="badge" style="background:#fee2e2; color:#991b1b">Ошибка</span>';
+                else statusBadge = '<span class="badge badge-green">OK</span>';
+
+                let content = `
+                    <div class="discovery-header">
+                        <span>${repo.name} <span style="font-weight:normal; color:#666;">(${repo.tag || '?'})</span></span>
+                        ${statusBadge}
+                    </div>
+                `;
+
+                if (repo.error) {
+                    content += `<div style="color:red; font-size:13px;">${repo.error}</div>`;
+                } else if (repo.assets) {
+                    content += '<div class="asset-list">';
+                    // Flatten assets grouped by arch for easier selection list, but keep sorted
+                    Object.keys(repo.assets).forEach(arch => {
+                        repo.assets[arch].forEach(asset => {
+                            // Check if this asset is already selected in current config
+                            const currentRepoConf = currentConfig.find(c => c.name === repo.name);
+                            const isChecked = currentRepoConf && currentRepoConf.selected_assets && currentRepoConf.selected_assets.includes(asset.name);
+                            
+                            content += `
+                                <label class="asset-item">
+                                    <input type="checkbox" data-repo="${repo.name}" value="${asset.name}" ${isChecked ? 'checked' : ''}>
+                                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${asset.name}">${asset.name}</span>
+                                    <span class="badge badge-blue" style="font-size:10px;">${arch}</span>
+                                </label>
+                            `;
+                        });
+                    });
+                    content += '</div>';
+                }
+                
+                div.innerHTML = content;
+                container.appendChild(div);
+            });
+        }
+
+        function applyDiscovery() {
+            // Collect checked boxes
+            const checkboxes = document.querySelectorAll('#discovery-results input[type="checkbox"]');
+            const selectedMap = {}; // repoName -> [assets]
+            
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    const repo = cb.getAttribute('data-repo');
+                    if (!selectedMap[repo]) selectedMap[repo] = [];
+                    selectedMap[repo].push(cb.value);
+                }
+            });
+
+            // Update Config
+            let changed = false;
+            currentConfig = currentConfig.map(repo => {
+                // If we have selections for this repo, update selected_assets
+                // IMPORTANT: If user unchecked everything for a repo that was displayed, we should probably clear selected_assets
+                
+                // Find if this repo was present in discovery data (to avoid clearing repos that failed or weren't scanned)
+                const wasScanned = discoveredData.find(d => d.name === repo.name && !d.error);
+                
+                if (wasScanned) {
+                    const newSelection = selectedMap[repo.name] || [];
+                    // Only update if changed
+                    repo.selected_assets = newSelection;
+                    repo.last_tag = wasScanned.tag; // Also update tag
+                    changed = true;
+                }
+                return repo;
+            });
+
+            document.getElementById('config-editor').value = JSON.stringify(currentConfig, null, 2);
+            closeDiscovery();
+            saveConfig(); // Auto save
+            alert("Конфигурация обновлена! 'selected_assets' и 'last_tag' актуализированы.");
+        }
+
+        // Helper
+        function copyCode(btn) {
+            const text = btn.nextElementSibling.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                 const orig = btn.innerText; btn.innerText = 'Copied!';
+                 setTimeout(() => btn.innerText = orig, 2000);
+            });
+        }
+        async function runUpdate() {
+            if(!confirm("Запустить обновление?")) return;
+            fetch('/api/update', { method: 'POST' });
+            alert("Запущено.");
+            refreshLog();
+        }
         async function refreshLog() {
             if (!document.getElementById('manager').classList.contains('active')) return;
             try {
                 const res = await fetch('/api/log');
-                const text = await res.text();
-                const view = document.getElementById('log-view');
-                view.textContent = text;
-                view.scrollTop = view.scrollHeight;
+                document.getElementById('log-view').textContent = await res.text();
             } catch(e) {}
         }
-        
-        setInterval(refreshLog, 5000); // Auto-refresh log
+        setInterval(refreshLog, 5000);
     </script>
 </body>
 </html>

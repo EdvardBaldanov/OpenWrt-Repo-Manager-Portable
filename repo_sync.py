@@ -10,8 +10,14 @@ from pathlib import Path
 import urllib.request
 import urllib.error
 
+# Portable path helper
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent
+
 # Константы
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = get_base_path()
 REPO_SOURCES = SCRIPT_DIR / "repo_sources.json"
 REPO_ROOT = Path("/var/www/openwrt_repo")
 TMP_DIR = Path("/tmp/repo_update")
@@ -31,7 +37,6 @@ def log(message):
 def download_file(url, dest_path):
     """Скачивание файла по URL."""
     try:
-        # Используем User-Agent, чтобы GitHub API не блокировал
         req = urllib.request.Request(
             url, 
             data=None, 
@@ -87,6 +92,9 @@ def main():
         arch = pkg.get('filter_arch')
         api_url = pkg.get('api_url')
         exclude_keywords = pkg.get('exclude_asset_keywords', [])
+        
+        # New feature: Selected Assets
+        selected_assets = pkg.get('selected_assets', []) # List of filenames
 
         target_dir = REPO_ROOT / arch
         if not target_dir.exists():
@@ -104,7 +112,6 @@ def main():
             continue
 
         assets = release_data.get('assets', [])
-        # Фильтруем только .ipk файлы
         ipk_assets = [a for a in assets if a.get('name', '').endswith('.ipk')]
 
         for asset in ipk_assets:
@@ -114,29 +121,38 @@ def main():
             if not file_name or not download_url:
                 continue
 
-            # Проверка исключений
-            is_excluded = False
-            for kw in exclude_keywords:
-                if kw in file_name:
-                    is_excluded = True
-                    break
-            if is_excluded:
-                continue
-
-            # Валидация архитектуры
+            # --- Start Logic Update ---
             is_ok = False
-            if arch == "all":
-                # Для all берем пакеты без архитектуры или явно помеченные как all/noarch или luci-
-                if re.search(r'(all|_all_|noarch|luci-)', file_name):
+            
+            if selected_assets and len(selected_assets) > 0:
+                # 1. Exact match mode (if list is populated)
+                if file_name in selected_assets:
                     is_ok = True
+                else:
+                    is_ok = False # Skip everything else if user was specific
             else:
-                # Для конкретных архитектур ищем подстроку
-                if arch in file_name:
-                    is_ok = True
-                # Совместимость x86_64 -> amd64
-                if arch == "x86_64" and "amd64" in file_name:
-                    is_ok = True
+                # 2. Heuristic/Regex mode (Legacy)
                 
+                # Check exclusions first
+                is_excluded = False
+                for kw in exclude_keywords:
+                    if kw in file_name:
+                        is_excluded = True
+                        break
+                if is_excluded:
+                    continue
+
+                if arch == "all":
+                    if re.search(r'(all|_all_|noarch|luci-)', file_name):
+                        is_ok = True
+                else:
+                    if arch in file_name:
+                        is_ok = True
+                    if arch == "x86_64" and "amd64" in file_name:
+                        is_ok = True
+            
+            # --- End Logic Update ---
+
             if not is_ok:
                 continue
 
@@ -147,9 +163,7 @@ def main():
                 
                 temp_file = TMP_DIR / file_name
                 if download_file(download_url, temp_file):
-                    # Удаление старых версий
                     prefix = file_name.split('_')[0]
-                    # Ищем файлы, начинающиеся с prefix_ 
                     for existing_file in target_dir.glob(f"{prefix}_*.ipk"):
                         log(f"   🧹 [SYNC] Удаление: {existing_file.name}")
                         try:
@@ -157,22 +171,19 @@ def main():
                         except Exception as e:
                             log(f"   ⚠️ Не удалось удалить {existing_file.name}: {e}")
 
-                    # Перемещение нового файла
                     try:
                         shutil.move(str(temp_file), str(dest_file))
                         updates_found = True
                     except Exception as e:
                         log(f"   ❌ Ошибка перемещения файла: {e}")
                 else:
-                    # Очистка, если файл скачался криво (хотя download_file должен был обработать)
                     if temp_file.exists():
                         temp_file.unlink()
 
-    # Очистка временной папки
     try:
         shutil.rmtree(TMP_DIR)
     except Exception as e:
-        pass # Игнорируем ошибки очистки tmp
+        pass
 
     if updates_found:
         log("✅ [SYNC] Синхронизация завершена. Есть новые пакеты.")
