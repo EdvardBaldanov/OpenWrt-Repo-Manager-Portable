@@ -383,15 +383,25 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({github_token: token})
                 });
+                
                 if(res.ok) {
                     alert("Настройки сохранены");
                     document.getElementById('gh-token').value = "";
                     loadSettings();
                 } else {
-                    const err = await res.json();
-                    alert("Ошибка сервера: " + (err.error || res.status));
+                    // Check if response is JSON
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        const err = await res.json();
+                        alert("Ошибка сервера: " + (err.error || res.status));
+                    } else {
+                        // It's likely HTML (502/500 from Nginx)
+                        const text = await res.text();
+                        console.error("Non-JSON Error Response:", text);
+                        alert("Критическая ошибка сервера (см. консоль): " + res.status + " " + res.statusText);
+                    }
                 }
-            } catch(e) { alert("Ошибка сети: " + e); }
+            } catch(e) { alert("Ошибка сети или парсинга: " + e); }
         }
 
         // --- Discovery Logic ---
