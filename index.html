@@ -176,9 +176,13 @@
         
         .discovery-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
         .discovery-header { font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; }
-        .asset-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
-        .asset-item { font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 4px; background: #f9fafb; border-radius: 4px; }
+        .asset-list { display: grid; grid-template-columns: 1fr; gap: 4px; }
+        .asset-item { font-size: 13px; display: flex; align-items: center; gap: 8px; padding: 6px; background: #f9fafb; border-radius: 4px; }
+        .asset-item span { word-break: break-all; }
         .asset-item:hover { background: #e5e7eb; }
+        
+        .discovery-filter-box { margin-bottom: 15px; padding: 10px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; gap: 10px; }
+        .discovery-filter-box select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #e5e7eb; color: #4b5563; }
         .badge-green { background: #d1fae5; color: #065f46; }
         .badge-blue { background: #dbeafe; color: #1e40af; }
@@ -295,6 +299,14 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     <input type="checkbox" id="force-scan"> Принудительно (Force Refresh)
                 </label>
                 <button class="btn btn-primary" id="start-scan-btn" onclick="runDiscovery()">🚀 Запустить сканирование</button>
+            </div>
+
+            <div class="discovery-filter-box" id="discovery-filter-area" style="display:none">
+                <label>Фильтр архитектуры:</label>
+                <select id="discovery-arch-filter" onchange="renderDiscovery(discoveredData)">
+                    <option value="all_files">Все файлы</option>
+                </select>
+                <span id="discovery-count" style="font-size: 12px; color: #666;"></span>
             </div>
             
             <div id="discovery-loader" style="display:none; text-align:center; padding: 20px;">
@@ -424,15 +436,28 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
             document.getElementById('discovery-loader').style.display = 'block';
             document.getElementById('discovery-results').innerHTML = '';
             document.getElementById('discovery-actions').style.display = 'none';
+            document.getElementById('discovery-filter-area').style.display = 'none';
             document.getElementById('start-scan-btn').disabled = true;
 
             try {
-                // Save current config first to ensure backend uses latest list
                 await saveConfig(); 
-                
                 const res = await fetch(`/api/discover?force=${force}`);
                 const data = await res.json();
                 discoveredData = data;
+                
+                // Collect unique archs for filter
+                const archs = new Set();
+                data.forEach(repo => {
+                    if(repo.assets) Object.keys(repo.assets).forEach(a => archs.add(a));
+                });
+                
+                const filter = document.getElementById('discovery-arch-filter');
+                filter.innerHTML = '<option value="all_files">Все файлы</option>';
+                Array.from(archs).sort().forEach(a => {
+                    filter.innerHTML += `<option value="${a}">${a}</option>`;
+                });
+                
+                document.getElementById('discovery-filter-area').style.display = 'flex';
                 renderDiscovery(data);
                 document.getElementById('discovery-actions').style.display = 'block';
             } catch(e) {
@@ -445,6 +470,7 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
 
         function renderDiscovery(data) {
             const container = document.getElementById('discovery-results');
+            const filterArch = document.getElementById('discovery-arch-filter').value;
             container.innerHTML = '';
             
             if (data.error) {
@@ -452,7 +478,10 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 return;
             }
 
+            let totalShown = 0;
+
             data.forEach((repo, repoIndex) => {
+                let repoHasVisibleAssets = false;
                 const div = document.createElement('div');
                 div.className = 'discovery-item';
                 
@@ -472,18 +501,21 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     content += `<div style="color:red; font-size:13px;">${repo.error}</div>`;
                 } else if (repo.assets) {
                     content += '<div class="asset-list">';
-                    // Flatten assets grouped by arch for easier selection list, but keep sorted
                     Object.keys(repo.assets).forEach(arch => {
+                        // Filter logic
+                        if (filterArch !== 'all_files' && filterArch !== arch) return;
+                        
                         repo.assets[arch].forEach(asset => {
-                            // Check if this asset is already selected in current config
                             const currentRepoConf = currentConfig.find(c => c.name === repo.name);
                             const isChecked = currentRepoConf && currentRepoConf.selected_assets && currentRepoConf.selected_assets.includes(asset.name);
                             
+                            repoHasVisibleAssets = true;
+                            totalShown++;
                             content += `
                                 <label class="asset-item">
                                     <input type="checkbox" data-repo="${repo.name}" value="${asset.name}" ${isChecked ? 'checked' : ''}>
-                                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${asset.name}">${asset.name}</span>
-                                    <span class="badge badge-blue" style="font-size:10px;">${arch}</span>
+                                    <span>${asset.name}</span>
+                                    <span class="badge badge-blue" style="font-size:10px; flex-shrink:0;">${arch}</span>
                                 </label>
                             `;
                         });
@@ -491,9 +523,13 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     content += '</div>';
                 }
                 
-                div.innerHTML = content;
-                container.appendChild(div);
+                if (repoHasVisibleAssets || repo.error || repo.status === 'skipped') {
+                    div.innerHTML = content;
+                    container.appendChild(div);
+                }
             });
+            
+            document.getElementById('discovery-count').textContent = `Найдено: ${totalShown}`;
         }
 
         function applyDiscovery() {
