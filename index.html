@@ -457,6 +457,10 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 await saveConfig(); 
                 const res = await fetch(`/api/discover?force=${force}`);
                 const data = await res.json();
+                
+                // Fix: Reload config to get new repos created by backend
+                await loadConfig();
+                
                 discoveredData = data;
                 renderDiscovery(data);
                 document.getElementById('discovery-actions').style.display = 'block';
