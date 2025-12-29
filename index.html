@@ -181,8 +181,9 @@
         .asset-item span { word-break: break-all; }
         .asset-item:hover { background: #e5e7eb; }
         
-        .discovery-filter-box { margin-bottom: 15px; padding: 10px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; gap: 10px; }
-        .discovery-filter-box select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; }
+        .discovery-filter-box { margin-bottom: 15px; padding: 10px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .filter-select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; flex: 1; min-width: 100px; max-width: 200px; }
+        .discovery-count { font-size: 12px; color: #666; margin-left: auto; white-space: nowrap; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #e5e7eb; color: #4b5563; }
         .badge-green { background: #d1fae5; color: #065f46; }
         .badge-blue { background: #dbeafe; color: #1e40af; }
@@ -454,19 +455,15 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 return;
             }
 
-            data.forEach((repo, repoIndex) => {
+            data.forEach((repo, idx) => {
                 const div = document.createElement('div');
                 div.className = 'discovery-item';
+                div.id = `repo-${idx}`;
                 
-                // Status Badge
                 let statusBadge = '';
                 if(repo.status === 'skipped') statusBadge = '<span class="badge">Кэш (без изменений)</span>';
                 else if(repo.error) statusBadge = '<span class="badge" style="background:#fee2e2; color:#991b1b">Ошибка</span>';
                 else statusBadge = '<span class="badge badge-green">OK</span>';
-
-                // Config info for auto-select
-                const currentRepoConf = currentConfig.find(c => c.name === repo.name) || {};
-                const defaultArch = currentRepoConf.filter_arch || 'all';
 
                 let header = `
                     <div class="discovery-header">
@@ -478,34 +475,23 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 if (repo.error) {
                     header += `<div style="color:red; font-size:13px;">${repo.error}</div>`;
                 } else if (repo.assets) {
-                    // Generate Arch Select
-                    const archs = Object.keys(repo.assets).sort();
-                    
-                    // Determine initial selection: try exact match, then 'x86_64' if default is 'x86_64', else 'all'
-                    let selectedVal = 'all_files';
-                    if (archs.includes(defaultArch)) selectedVal = defaultArch;
-                    else if (defaultArch === 'x86_64' && archs.includes('x86_64')) selectedVal = 'x86_64';
-                    
+                    // Placeholder for filters
                     header += `
-                        <div style="margin: 10px 0; display:flex; align-items:center; gap:10px; background:#f3f4f6; padding:8px; border-radius:6px;">
-                            <label style="font-size:13px; font-weight:600;">Фильтр:</label>
-                            <select style="padding:4px; border-radius:4px; border:1px solid #ccc; flex:1;" onchange="filterRepoAssets(this)">
-                                <option value="all_files">Показать все (${Object.values(repo.assets).flat().length} файлов)</option>
-                                ${archs.map(a => `<option value="${a}" ${a === selectedVal ? 'selected' : ''}>${a} (${repo.assets[a].length})</option>`).join('')}
-                            </select>
+                        <div class="discovery-filter-box" id="filters-${idx}">
+                            <!-- Filters injected by JS -->
                         </div>
-                        <div class="asset-list">
+                        <div class="asset-list" id="assets-${idx}">
                     `;
                     
-                    // Generate Assets
-                    Object.keys(repo.assets).forEach(arch => {
+                    const archs = Object.keys(repo.assets).sort();
+                    
+                    // Render assets (initially all visible)
+                    archs.forEach(arch => {
                         repo.assets[arch].forEach(asset => {
+                            const currentRepoConf = currentConfig.find(c => c.name === repo.name) || {};
                             const isChecked = currentRepoConf.selected_assets && currentRepoConf.selected_assets.includes(asset.name);
-                            // Initial visibility
-                            const isVisible = (selectedVal === 'all_files' || selectedVal === arch);
-                            
                             header += `
-                                <label class="asset-item" data-arch="${arch}" style="${isVisible ? '' : 'display:none'}">
+                                <label class="asset-item" data-arch="${arch}">
                                     <input type="checkbox" data-repo="${repo.name}" value="${asset.name}" ${isChecked ? 'checked' : ''}>
                                     <span>${asset.name}</span>
                                     <span class="badge badge-blue" style="font-size:10px; flex-shrink:0;">${arch}</span>
@@ -518,22 +504,134 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 
                 div.innerHTML = header;
                 container.appendChild(div);
+
+                if (repo.assets) {
+                    initCascadingFilters(idx, Object.keys(repo.assets));
+                }
             });
         }
-        
-        function filterRepoAssets(select) {
-            const val = select.value;
-            // Find parent discovery-item
-            const parent = select.closest('.discovery-item');
-            const items = parent.querySelectorAll('.asset-item');
+
+        function initCascadingFilters(idx, archList) {
+            const container = document.getElementById(`filters-${idx}`);
+            if(!container) return;
+
+            // Prepare data structure for 3 levels
+            // Level 1 -> [Level 2 -> [Level 3]]
+            // Split arch strings by '_'
+            
+            // Initial render
+            container.innerHTML = `
+                <select class="filter-select" id="f1-${idx}" onchange="updateFilters(${idx}, 1)">
+                    <option value="">Все Архитектуры</option>
+                </select>
+                <select class="filter-select" id="f2-${idx}" onchange="updateFilters(${idx}, 2)" style="display:none">
+                    <option value="">Все Подтипы</option>
+                </select>
+                <select class="filter-select" id="f3-${idx}" onchange="updateFilters(${idx}, 3)" style="display:none">
+                    <option value="">Все Платы</option>
+                </select>
+                <span class="discovery-count" id="count-${idx}"></span>
+            `;
+
+            // Populate Level 1
+            const parts1 = new Set(archList.map(a => a.split('_')[0]));
+            const s1 = document.getElementById(`f1-${idx}`);
+            Array.from(parts1).sort().forEach(p => s1.add(new Option(p, p)));
+
+            // Store archList on the DOM element for easy access
+            container.dataset.archs = JSON.stringify(archList);
+            
+            // Trigger update to set initial state (counts etc)
+            updateFilters(idx, 0);
+        }
+
+        function updateFilters(idx, changedLevel) {
+            const container = document.getElementById(`filters-${idx}`);
+            const archList = JSON.parse(container.dataset.archs);
+            
+            const s1 = document.getElementById(`f1-${idx}`);
+            const s2 = document.getElementById(`f2-${idx}`);
+            const s3 = document.getElementById(`f3-${idx}`);
+            
+            const v1 = s1.value;
+            const v2 = s2.value;
+            const v3 = s3.value;
+
+            // If Level 1 changed, rebuild Level 2
+            if (changedLevel <= 1) {
+                s2.innerHTML = '<option value="">Все Подтипы</option>';
+                s2.style.display = 'none';
+                s3.innerHTML = '<option value="">Все Платы</option>';
+                s3.style.display = 'none';
+
+                if (v1) {
+                    const parts2 = new Set();
+                    archList.forEach(a => {
+                        const p = a.split('_');
+                        if (p[0] === v1 && p.length > 1) parts2.add(p[1]);
+                    });
+                    
+                    if (parts2.size > 0) {
+                        Array.from(parts2).sort().forEach(p => s2.add(new Option(p, p)));
+                        s2.style.display = 'block';
+                    }
+                }
+            }
+
+            // If Level 2 changed (or Level 1 cascading), rebuild Level 3
+            if (changedLevel <= 2) {
+                s3.innerHTML = '<option value="">Все Платы</option>';
+                s3.style.display = 'none';
+                
+                if (v1 && s2.value) { // Use current s2 value
+                    const curV2 = s2.value;
+                    const parts3 = new Set();
+                    archList.forEach(a => {
+                        const p = a.split('_');
+                        if (p[0] === v1 && p[1] === curV2 && p.length > 2) {
+                             // Join the rest as Level 3
+                             parts3.add(p.slice(2).join('_'));
+                        }
+                    });
+
+                    if (parts3.size > 0) {
+                        Array.from(parts3).sort().forEach(p => s3.add(new Option(p, p)));
+                        s3.style.display = 'block';
+                    }
+                }
+            }
+
+            // Apply filtering
+            filterRepoAssets(idx);
+        }
+
+        function filterRepoAssets(idx) {
+            const s1 = document.getElementById(`f1-${idx}`).value;
+            const s2 = document.getElementById(`f2-${idx}`).value;
+            const s3 = document.getElementById(`f3-${idx}`).value;
+            
+            // Construct search prefix
+            // e.g. "mips64" or "mips64_mips64r2"
+            let prefix = s1;
+            if (prefix && s2) prefix += '_' + s2;
+            if (prefix && s3) prefix += '_' + s3;
+
+            const items = document.querySelectorAll(`#assets-${idx} .asset-item`);
+            let count = 0;
             
             items.forEach(item => {
-                if (val === 'all_files' || item.getAttribute('data-arch') === val) {
+                const arch = item.getAttribute('data-arch');
+                // Logic: does the asset's arch START with the selected prefix?
+                // Example: Selected "mips64", Asset "mips64_generic" -> Match
+                if (!prefix || arch === prefix || arch.startsWith(prefix + '_')) {
                     item.style.display = 'flex';
+                    count++;
                 } else {
                     item.style.display = 'none';
                 }
             });
+            
+            document.getElementById(`count-${idx}`).textContent = `Файлов: ${count}`;
         }
 
         function applyDiscovery() {

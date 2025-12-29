@@ -29,58 +29,44 @@ def load_sources():
 
 def get_arch_from_filename(filename):
     """
-    Heuristic to determine architecture from filename.
-    OpenWrt packages usually follow: name_version_architecture.ipk
+    Extracts the raw architecture string from the filename.
+    It looks for the first segment that matches known architecture prefixes
+    and returns that segment plus everything that follows (minus extension).
+    
+    Example: name_v1_mips64_mips64r2_malta_be64.ipk 
+    -> Returns: mips64_mips64r2_malta_be64
     """
     filename = filename.lower()
-    
-    # 1. Try to extract from the standard naming convention (last part before extension)
-    # Example: package_1.0_x86_64.ipk -> x86_64
-    if filename.endswith('.ipk'):
-        base = filename[:-4] # remove .ipk
-        parts = base.split('_')
-        if len(parts) >= 3:
-            # The architecture is typically the last part, but sometimes it's complex like 'mips_24kc'
-            # or 'arm_cortex-a9'. Let's look at the last part first.
-            candidate = parts[-1]
-            
-            # Common valid architectures in OpenWrt
-            common_archs = [
-                'x86_64', 'amd64', 'aarch64', 'arm64', 'all', 'noarch',
-                'mips', 'mipsel', 'i386', 'powerpc', 'riscv64'
-            ]
-            
-            # Check if candidate starts with any common arch
-            for arch in common_archs:
-                if candidate.startswith(arch):
-                    return candidate # Return the full specific arch string (e.g. mips_24kc)
-            
-            # If not found in the last part, it might be a multi-part arch like 'arm_cortex-a9'
-            # which is split by underscores. This is harder.
-            # Let's fallback to regex search if strict parsing fails.
-
-    # 2. Fallback: Keyword search
-    if 'x86_64' in filename or 'amd64' in filename:
-        return 'x86_64'
-    elif 'aarch64' in filename or 'arm64' in filename:
-        return 'aarch64'
-    elif 'mips' in filename: # Covers mips_24kc, mipsel, etc
-        if 'mipsel' in filename: return 'mipsel_generic'
-        if 'mips64' in filename: return 'mips64_generic'
-        return 'mips_generic'
-    elif 'arm' in filename: # Covers arm_cortex, arm_xscale
-        return 'arm_generic'
-    elif 'i386' in filename:
-        return 'i386_generic'
-    elif 'powerpc' in filename:
-        return 'powerpc_generic'
-    elif 'riscv' in filename:
-        return 'riscv_generic'
-    elif 'loongarch64' in filename:
-        return 'loongarch64_generic'
-    elif 'all' in filename or 'noarch' in filename or filename.startswith('luci-'):
-        return 'all'
+    if not filename.endswith('.ipk'):
+        return 'unknown'
         
+    base = filename[:-4] # remove .ipk
+    parts = base.split('_')
+    
+    # Known prefixes that start an architecture definition
+    arch_prefixes = (
+        'x86', 'amd64', 'aarch64', 'arm', 
+        'mips', 'i386', 'powerpc', 'riscv', 'loongarch'
+    )
+    
+    # Special case for 'all' or 'noarch'
+    if 'all' in parts or 'noarch' in parts:
+        return 'all'
+
+    # Iterate parts to find where the architecture definition likely starts
+    for i, part in enumerate(parts):
+        # Skip version numbers like v1, 1.0, etc if they accidentally match (rare for arch prefixes but safe to check)
+        if part.startswith('v') and part[1:].isdigit():
+            continue
+            
+        if part.startswith(arch_prefixes):
+            # Found the start of architecture!
+            # Return this part and everything after it rejoined by '_'
+            return "_".join(parts[i:])
+            
+    # Fallback for corner cases
+    if 'luci-' in filename: return 'all'
+    
     return 'unknown'
 
 def discover_releases(force=False):
