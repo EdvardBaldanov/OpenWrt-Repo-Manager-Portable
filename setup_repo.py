@@ -10,6 +10,8 @@ REPO_ROOT = Path("/var/www/openwrt_repo")
 NGINX_CONF_DEST = Path("/etc/nginx/sites-available/openwrt_repo")
 NGINX_ENABLED_LINK = Path("/etc/nginx/sites-enabled/openwrt_repo")
 SCRIPT_DIR = Path(__file__).resolve().parent
+VENV_DIR = SCRIPT_DIR / "venv"
+VENV_PYTHON = VENV_DIR / "bin" / "python"
 USER_NAME = os.environ.get('USER') or os.getlogin()
 
 def run_command(command, shell=False, check=True):
@@ -21,17 +23,34 @@ def run_command(command, shell=False, check=True):
         print(e)
         sys.exit(1)
 
+def setup_venv():
+    """Создание виртуального окружения и установка зависимостей."""
+    print("📦 Настройка виртуального окружения (venv)...")
+    
+    if not VENV_DIR.exists():
+        run_command(f"python3 -m venv {VENV_DIR}", shell=True)
+    
+    # Обновление pip и установка зависимостей
+    print("📥 Установка библиотек Python (Flask, PyGithub)...")
+    requirements = ["Flask", "PyGithub"]
+    
+    # Используем pip внутри venv
+    venv_pip = VENV_DIR / "bin" / "pip"
+    run_command(f"{venv_pip} install --upgrade pip", shell=True)
+    run_command(f"{venv_pip} install {' '.join(requirements)}", shell=True)
+
 def main():
     print("🛠 Настройка прав для локальных утилит в bin/...")
     bin_dir = SCRIPT_DIR / "bin"
     if bin_dir.exists():
         run_command(f"chmod +x {bin_dir}/*", shell=True)
     
-    print("🛠 Установка системных зависимостей (Nginx, Python Flask, PIP)...")
-    run_command("sudo apt update && sudo apt install -y nginx gzip python3 python3-flask python3-pip", shell=True)
-    
-    print("📦 Установка Python-библиотек (PyGithub)...")
-    run_command("sudo pip3 install PyGithub", shell=True)
+    print("🛠 Установка системных зависимостей...")
+    # Убираем python3-pip и python3-flask из системных, добавляем python3-venv
+    run_command("sudo apt update && sudo apt install -y nginx gzip python3 python3-venv", shell=True)
+
+    # Настройка Venv (после установки python3-venv)
+    setup_venv()
 
     # Создание структуры папок
     print(f"📂 Создание директорий в {REPO_ROOT}...")
@@ -67,6 +86,7 @@ def main():
     print("🖥 Настройка службы панели управления (Dashboard)...")
     service_file = "/etc/systemd/system/repo-dashboard.service"
     
+    # ВАЖНО: Используем python из venv
     service_content = f"""[Unit]
 Description=OpenWrt Repo Manager Dashboard
 After=network.target
@@ -74,13 +94,12 @@ After=network.target
 [Service]
 User={USER_NAME}
 WorkingDirectory={SCRIPT_DIR}
-ExecStart=/usr/bin/python3 {SCRIPT_DIR}/dashboard.py
+ExecStart={VENV_PYTHON} {SCRIPT_DIR}/dashboard.py
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 """
-    # Запись файла сервиса через sudo tee, так как нужны права root
     run_command(f"echo '{service_content}' | sudo tee {service_file}", shell=True)
 
     run_command("sudo systemctl daemon-reload", shell=True)
@@ -89,18 +108,15 @@ WantedBy=multi-user.target
 
     # Настройка Cron
     print("⏰ Настройка планировщика Cron...")
-    cron_job = f"0 */6 * * * /usr/bin/python3 {SCRIPT_DIR}/repo_update.py >> {SCRIPT_DIR}/cron_error.log 2>&1"
+    # ВАЖНО: Используем python из venv
+    cron_job = f"0 */6 * * * {VENV_PYTHON} {SCRIPT_DIR}/repo_update.py >> {SCRIPT_DIR}/cron_error.log 2>&1"
     
-    # Получаем текущий crontab, фильтруем старые записи repo_update и добавляем новую
-    # Примечание: предполагаем, что repo_update.sh тоже будет заменен на repo_update.py
     current_cron = subprocess.run("crontab -l 2>/dev/null", shell=True, text=True, capture_output=True).stdout
     
-    # Удаляем строки, содержащие repo_update
     new_cron_lines = [line for line in current_cron.splitlines() if "repo_update" not in line]
     new_cron_lines.append(cron_job)
     new_cron_content = "\n".join(new_cron_lines) + "\n"
     
-    # Устанавливаем новый crontab
     run_command(f"echo '{new_cron_content}' | crontab -", shell=True)
 
     # Копирование UI в веб-корень
