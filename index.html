@@ -376,7 +376,7 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
 
         async function saveSettings() {
             const token = document.getElementById('gh-token').value;
-            if(!token) return;
+            // Removed empty check to allow clearing token
             try {
                 const res = await fetch('/settings', {
                     method: 'POST',
@@ -387,8 +387,11 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     alert("Настройки сохранены");
                     document.getElementById('gh-token').value = "";
                     loadSettings();
+                } else {
+                    const err = await res.json();
+                    alert("Ошибка сервера: " + (err.error || res.status));
                 }
-            } catch(e) { alert("Ошибка сохранения"); }
+            } catch(e) { alert("Ошибка сети: " + e); }
         }
 
         // --- Discovery Logic ---

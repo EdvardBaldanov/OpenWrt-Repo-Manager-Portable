@@ -67,22 +67,33 @@ def settings():
     if request.method == 'POST':
         try:
             new_data = request.json
+            print(f"DEBUG: POST /settings received: {new_data}")
+            
             token = new_data.get('github_token', '').strip()
             
             current_data = {}
             if os.path.exists(GLOBAL_CONFIG_FILE):
-                with open(GLOBAL_CONFIG_FILE, 'r') as f:
-                    current_data = json.load(f)
+                try:
+                    with open(GLOBAL_CONFIG_FILE, 'r') as f:
+                        content = f.read().strip()
+                        if content:
+                            current_data = json.loads(content)
+                except Exception as e:
+                    print(f"WARN: Could not read config.json: {e}")
+                    current_data = {}
             
-            # Update only provided fields
-            if token:
-                current_data['github_token'] = token
+            # Update token (allow empty string to clear it)
+            current_data['github_token'] = token
                 
             with open(GLOBAL_CONFIG_FILE, 'w') as f:
                 json.dump(current_data, f, indent=2)
-                
+                f.flush()
+                os.fsync(f.fileno())
+            
+            print(f"DEBUG: Config saved to {GLOBAL_CONFIG_FILE}")
             return jsonify({"status": "saved"})
         except Exception as e:
+            print(f"ERROR: Failed to save settings: {e}")
             return jsonify({"error": str(e)}), 500
 
 @app.route('/api/discover', methods=['GET'])
