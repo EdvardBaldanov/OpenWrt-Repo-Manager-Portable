@@ -57,6 +57,14 @@ def main():
     run_command(f"sudo mkdir -p {REPO_ROOT}/x86_64 {REPO_ROOT}/all", shell=True)
     run_command(f"sudo chown -R {USER_NAME}:{USER_NAME} {REPO_ROOT}", shell=True)
 
+    # Настройка прав на локальные конфиги (чтобы dashboard мог их менять)
+    print("🔒 Настройка прав доступа к конфигурационным файлам...")
+    for conf_file in ["config.json", "repo_sources.json", "update.log"]:
+        fpath = SCRIPT_DIR / conf_file
+        if fpath.exists():
+            run_command(f"sudo chown {USER_NAME}:{USER_NAME} {fpath}", shell=True)
+            run_command(f"sudo chmod 644 {fpath}", shell=True)
+
     print("🌐 Настройка конфигурации Nginx...")
     local_conf = SCRIPT_DIR / "openwrt_repo.conf"
     if local_conf.exists():
