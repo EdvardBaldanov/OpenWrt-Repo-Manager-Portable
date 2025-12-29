@@ -2,54 +2,351 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>ASU OpenWrt Repo</title>
+    <title>OpenWrt Repo Manager</title>
     <style>
-        body{font-family:-apple-system,system-ui,sans-serif;max-width:900px;margin:40px auto;padding:20px;line-height:1.6;background:#f0f2f5;color:#1c1e21;}
-        .card{background:#fff;padding:25px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08);margin-bottom:25px;}
-        code{display:block;background:#24292e;color:#e1e4e8;padding:16px;margin:12px 0;border-radius:8px;font-family:'SFMono-Regular',monospace;white-space:pre-wrap;font-size:14px;}
-        h2{margin-top:0;color:#000;}
-        #log-view{background:#1b1d23;color:#a9b1d6;padding:16px;border-radius:8px;font-family:monospace;font-size:12px;max-height:450px;overflow-y:auto;white-space:pre-wrap;border:1px solid #333;}
-        .host{color:#ff79c6;font-weight:bold;}
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --code-bg: #111827;
+            --code-text: #e5e7eb;
+            --border: #e5e7eb;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+        .container { display: grid; gap: 24px; }
+        .card {
+            background: var(--card-bg);
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0,0,0,0.02);
+        }
+        h2 { margin-top: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; margin-bottom: 0.5em; }
+        h3 { margin-top: 0; font-size: 1.25rem; font-weight: 600; }
+        h4 { margin: 24px 0 8px; font-size: 1rem; font-weight: 600; color: var(--text-main); }
+        p { color: var(--text-muted); margin-bottom: 1.5em; }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 8px; margin-bottom: 24px; padding: 4px; background: rgba(0,0,0,0.05); border-radius: 12px; width: fit-content; }
+        .tab {
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .tab:hover { color: var(--text-main); }
+        .tab.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Code Block */
+        /* Default inline code (строчный код) */
+        code {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 0.9em;
+            padding: 2px 6px;
+            background: #f3f4f6; /* Светло-серый фон для контраста */
+            color: #1f2937;       /* Темно-серый текст */
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+
+        /* Block code inside wrapper (темные блоки с кодом) */
+        .code-wrapper {
+            position: relative;
+            margin: 12px 0 24px;
+            background: var(--code-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .code-wrapper code {
+            display: block;
+            background: transparent;
+            color: var(--code-text);
+            padding: 20px;
+            padding-right: 70px; /* Отступ для кнопки */
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre; /* Важно для скролла */
+            margin: 0;
+            border: none;
+        }
+        
+        pre { margin: 0; }
+        
+        /* Скроллбар для кода */
+        code::-webkit-scrollbar { height: 8px; }
+        code::-webkit-scrollbar-track { background: #1f2937; }
+        code::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+
+        /* Copy Button */
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.1);
+            color: #9ca3af;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(4px);
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: rgba(255,255,255,0.3); }
+
+        /* Editor & Log */
+        textarea#config-editor {
+            width: 100%;
+            height: 400px;
+            background: var(--code-bg);
+            color: #d1d5db;
+            font-family: monospace;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            box-sizing: border-box;
+            resize: vertical;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        textarea#config-editor:focus { outline: 2px solid var(--primary); border-color: transparent; }
+        
+        #log-view {
+            background: #111827;
+            color: #10b981; /* Зеленоватый терминальный цвет */
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid #374151;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+        
+        .btn-update { background: #10b981; color: white; }
+        .btn-update:hover { background: #059669; }
+
+        /* Help Table */
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f9fafb; font-weight: 600; color: var(--text-main); }
+        td { background: #fff; }
+        tr:last-child td { border-bottom: none; }
+        code.inline { padding: 2px 6px; background: #f3f4f6; color: #db2777; border-radius: 4px; font-family: monospace; font-size: 0.9em; display: inline; border: 1px solid #e5e7eb; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>🚀 Репозиторий OPKG OpenWrt(только ipk)</h2>
-        <p>Для настройки роутера выполните команды:</p>
-        <code># 1. Добавление репозитория
-echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" > /etc/opkg/customfeeds.conf
-echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/customfeeds.conf
-
-# 2. Установка ключа подписи
-wget http://<span class="host"></span>/public.key -O /tmp/public.key
-opkg-key add /tmp/public.key
-
-# 3. Обновление списков
-opkg update</code>
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('client')">📡 Клиент (Роутер)</button>
+        <button class="tab" onclick="showTab('manager')">⚙️ Управление</button>
+        <button class="tab" onclick="showTab('help')">❓ Справка</button>
     </div>
 
-    <div class="card">
-        <h3>📄 Лог последних обновлений</h3>
-        <div id="log-view">Загрузка данных...</div>
+    <div class="container">
+        <!-- Client Setup Tab -->
+        <div id="client" class="tab-content active">
+            <div class="card">
+                <h2>🚀 Custom Репозиторий</h2>
+                <p>Выполните эти команды на роутере:</p>
+
+                <h4>1. Добавление источников</h4>
+                <div class="code-wrapper">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <code>echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" >> /etc/opkg/customfeeds.conf
+echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/customfeeds.conf</code>
+                </div>
+
+                <h4>2. Ключ подписи</h4>
+                <div class="code-wrapper">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <code>wget http://<span class="host"></span>/public.key -O /tmp/public.key && opkg-key add /tmp/public.key</code>
+                </div>
+
+                <h4>3. Обновление</h4>
+                <div class="code-wrapper">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <code>opkg update</code>
+                </div>
+
+                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+                <h3>🗑️ Удаление</h3>
+                <p>Для удаления удалите соответствующие строки из <code>/etc/opkg/customfeeds.conf</code> и выполните:</p>
+                <div class="code-wrapper">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <code>sed -i '/custom_x86_64/d' /etc/opkg/customfeeds.conf
+sed -i '/custom_all/d' /etc/opkg/customfeeds.conf
+rm /var/opkg-lists/custom_*
+opkg update</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manager Tab -->
+        <div id="manager" class="tab-content">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h2>⚙️ Управление источниками</h2>
+                    <button class="btn btn-update" onclick="runUpdate()">🔄 Запустить обновление (Update & Publish)</button>
+                </div>
+                
+                <textarea id="config-editor"></textarea>
+                <div style="margin-top: 10px; text-align: right;">
+                    <span id="save-status" style="margin-right: 10px; font-size: 14px; color: #666;"></span>
+                    <button class="btn btn-primary" onclick="saveConfig()">💾 Сохранить изменения</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📄 Лог процессов</h3>
+                <pre id="log-view">Загрузка лога...</pre>
+            </div>
+        </div>
+
+        <!-- Help Tab -->
+        <div id="help" class="tab-content">
+            <div class="card">
+                <h3>📘 Справка по repo_sources.json</h3>
+                <table>
+                    <thead><tr><th>Поле</th><th>Описание</th><th>Пример</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>name</code></td><td>Имя пакета (для логов и группировки)</td><td><code>"amneziawg"</code></td></tr>
+                        <tr><td><code>api_url</code></td><td>GitHub API URL (latest release)</td><td><code>".../releases/latest"</code></td></tr>
+                        <tr><td><code>filter_arch</code></td><td>Архитектура репозитория, куда класть файлы</td><td><code>"x86_64"</code> или <code>"all"</code></td></tr>
+                        <tr><td><code>exclude_asset_keywords</code></td><td>Исключать файл, если имя содержит эти слова</td><td><code>["entware", "mips"]</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
+        // Setup Hostname
         const host = window.location.host;
         document.querySelectorAll('.host').forEach(el => el.textContent = host);
 
-        async function refreshLog() {
-            try {
-                const r = await fetch('/update.log');
-                const t = await r.text();
-                const view = document.getElementById('log-view');
-                view.textContent = t.trim().split('\n').slice(-30).join('\n');
-                view.scrollTop = view.scrollHeight;
-            } catch (e) {
-                document.getElementById('log-view').textContent = "Лог обновляется или пуст...";
+        // Tabs Logic
+        function showTab(id) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(id).classList.add('active');
+            if(id === 'manager') loadConfig();
+        }
+
+        // Copy Function
+        function copyCode(btn) {
+            const text = btn.nextElementSibling.innerText;
+            if (!navigator.clipboard) {
+                 const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                 showCopied(btn);
+            } else {
+                navigator.clipboard.writeText(text).then(() => showCopied(btn));
             }
         }
-        refreshLog();
-        setInterval(refreshLog, 10000);
+        function showCopied(btn) {
+            const orig = btn.innerText; btn.innerText = 'Copied!'; btn.style.color = '#4caf50';
+            setTimeout(() => { btn.innerText = orig; btn.style.color = '#ccc'; }, 2000);
+        }
+
+        // API Functions
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                document.getElementById('config-editor').value = JSON.stringify(data, null, 2);
+            } catch (e) { console.error('Error loading config', e); }
+        }
+
+        async function saveConfig() {
+            const btn = document.querySelector('.btn-primary');
+            const status = document.getElementById('save-status');
+            try {
+                const text = document.getElementById('config-editor').value;
+                const json = JSON.parse(text); // Validate JSON
+                
+                btn.disabled = true;
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(json)
+                });
+                
+                if(res.ok) {
+                    status.textContent = "Сохранено!";
+                    status.style.color = "green";
+                } else {
+                    throw new Error("Save failed");
+                }
+            } catch (e) {
+                status.textContent = "Ошибка: " + e.message;
+                status.style.color = "red";
+            } finally {
+                setTimeout(() => { status.textContent = ""; btn.disabled = false; }, 3000);
+            }
+        }
+
+        async function runUpdate() {
+            if(!confirm("Запустить обновление пакетов и пересборку индексов?")) return;
+            try {
+                const res = await fetch('/api/update', { method: 'POST' });
+                alert("Обновление запущено в фоне. Следите за логом.");
+                refreshLog();
+            } catch(e) { alert("Ошибка запуска: " + e); }
+        }
+
+        async function refreshLog() {
+            if (!document.getElementById('manager').classList.contains('active')) return;
+            try {
+                const res = await fetch('/api/log');
+                const text = await res.text();
+                const view = document.getElementById('log-view');
+                view.textContent = text;
+                view.scrollTop = view.scrollHeight;
+            } catch(e) {}
+        }
+        
+        setInterval(refreshLog, 5000); // Auto-refresh log
     </script>
 </body>
 </html>
