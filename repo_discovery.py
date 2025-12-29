@@ -30,20 +30,55 @@ def load_sources():
 def get_arch_from_filename(filename):
     """
     Heuristic to determine architecture from filename.
+    OpenWrt packages usually follow: name_version_architecture.ipk
     """
     filename = filename.lower()
+    
+    # 1. Try to extract from the standard naming convention (last part before extension)
+    # Example: package_1.0_x86_64.ipk -> x86_64
+    if filename.endswith('.ipk'):
+        base = filename[:-4] # remove .ipk
+        parts = base.split('_')
+        if len(parts) >= 3:
+            # The architecture is typically the last part, but sometimes it's complex like 'mips_24kc'
+            # or 'arm_cortex-a9'. Let's look at the last part first.
+            candidate = parts[-1]
+            
+            # Common valid architectures in OpenWrt
+            common_archs = [
+                'x86_64', 'amd64', 'aarch64', 'arm64', 'all', 'noarch',
+                'mips', 'mipsel', 'i386', 'powerpc', 'riscv64'
+            ]
+            
+            # Check if candidate starts with any common arch
+            for arch in common_archs:
+                if candidate.startswith(arch):
+                    return candidate # Return the full specific arch string (e.g. mips_24kc)
+            
+            # If not found in the last part, it might be a multi-part arch like 'arm_cortex-a9'
+            # which is split by underscores. This is harder.
+            # Let's fallback to regex search if strict parsing fails.
+
+    # 2. Fallback: Keyword search
     if 'x86_64' in filename or 'amd64' in filename:
         return 'x86_64'
     elif 'aarch64' in filename or 'arm64' in filename:
         return 'aarch64'
-    elif 'mips_24kc' in filename:
-        return 'mips_24kc'
-    elif 'mipsel_24kc' in filename:
-        return 'mipsel_24kc'
-    elif 'arm_cortex-a7' in filename:
-        return 'arm_cortex-a7'
+    elif 'mips' in filename: # Covers mips_24kc, mipsel, etc
+        if 'mipsel' in filename: return 'mipsel_generic'
+        if 'mips64' in filename: return 'mips64_generic'
+        return 'mips_generic'
+    elif 'arm' in filename: # Covers arm_cortex, arm_xscale
+        return 'arm_generic'
+    elif 'i386' in filename:
+        return 'i386_generic'
+    elif 'powerpc' in filename:
+        return 'powerpc_generic'
+    elif 'riscv' in filename:
+        return 'riscv_generic'
     elif 'all' in filename or 'noarch' in filename or filename.startswith('luci-'):
         return 'all'
+        
     return 'unknown'
 
 def discover_releases(force=False):
