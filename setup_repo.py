@@ -27,8 +27,11 @@ def main():
     if bin_dir.exists():
         run_command(f"chmod +x {bin_dir}/*", shell=True)
     
-    print("🛠 Установка системных зависимостей (Nginx, Python Flask)...")
-    run_command("sudo apt update && sudo apt install -y nginx gzip python3 python3-flask", shell=True)
+    print("🛠 Установка системных зависимостей (Nginx, Python Flask, PIP)...")
+    run_command("sudo apt update && sudo apt install -y nginx gzip python3 python3-flask python3-pip", shell=True)
+    
+    print("📦 Установка Python-библиотек (PyGithub)...")
+    run_command("sudo pip3 install PyGithub", shell=True)
 
     # Создание структуры папок
     print(f"📂 Создание директорий в {REPO_ROOT}...")
