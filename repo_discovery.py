@@ -76,6 +76,8 @@ def get_arch_from_filename(filename):
         return 'powerpc_generic'
     elif 'riscv' in filename:
         return 'riscv_generic'
+    elif 'loongarch64' in filename:
+        return 'loongarch64_generic'
     elif 'all' in filename or 'noarch' in filename or filename.startswith('luci-'):
         return 'all'
         
