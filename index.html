@@ -300,14 +300,6 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 </label>
                 <button class="btn btn-primary" id="start-scan-btn" onclick="runDiscovery()">🚀 Запустить сканирование</button>
             </div>
-
-            <div class="discovery-filter-box" id="discovery-filter-area" style="display:none">
-                <label>Фильтр архитектуры:</label>
-                <select id="discovery-arch-filter" onchange="renderDiscovery(discoveredData)">
-                    <option value="all_files">Все файлы</option>
-                </select>
-                <span id="discovery-count" style="font-size: 12px; color: #666;"></span>
-            </div>
             
             <div id="discovery-loader" style="display:none; text-align:center; padding: 20px;">
                 <div style="font-size: 24px;">⏳</div>
@@ -436,7 +428,6 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
             document.getElementById('discovery-loader').style.display = 'block';
             document.getElementById('discovery-results').innerHTML = '';
             document.getElementById('discovery-actions').style.display = 'none';
-            document.getElementById('discovery-filter-area').style.display = 'none';
             document.getElementById('start-scan-btn').disabled = true;
 
             try {
@@ -444,20 +435,6 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 const res = await fetch(`/api/discover?force=${force}`);
                 const data = await res.json();
                 discoveredData = data;
-                
-                // Collect unique archs for filter
-                const archs = new Set();
-                data.forEach(repo => {
-                    if(repo.assets) Object.keys(repo.assets).forEach(a => archs.add(a));
-                });
-                
-                const filter = document.getElementById('discovery-arch-filter');
-                filter.innerHTML = '<option value="all_files">Все файлы</option>';
-                Array.from(archs).sort().forEach(a => {
-                    filter.innerHTML += `<option value="${a}">${a}</option>`;
-                });
-                
-                document.getElementById('discovery-filter-area').style.display = 'flex';
                 renderDiscovery(data);
                 document.getElementById('discovery-actions').style.display = 'block';
             } catch(e) {
@@ -470,7 +447,6 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
 
         function renderDiscovery(data) {
             const container = document.getElementById('discovery-results');
-            const filterArch = document.getElementById('discovery-arch-filter').value;
             container.innerHTML = '';
             
             if (data.error) {
@@ -478,19 +454,21 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 return;
             }
 
-            let totalShown = 0;
-
             data.forEach((repo, repoIndex) => {
-                let repoHasVisibleAssets = false;
                 const div = document.createElement('div');
                 div.className = 'discovery-item';
                 
+                // Status Badge
                 let statusBadge = '';
                 if(repo.status === 'skipped') statusBadge = '<span class="badge">Кэш (без изменений)</span>';
                 else if(repo.error) statusBadge = '<span class="badge" style="background:#fee2e2; color:#991b1b">Ошибка</span>';
                 else statusBadge = '<span class="badge badge-green">OK</span>';
 
-                let content = `
+                // Config info for auto-select
+                const currentRepoConf = currentConfig.find(c => c.name === repo.name) || {};
+                const defaultArch = currentRepoConf.filter_arch || 'all';
+
+                let header = `
                     <div class="discovery-header">
                         <span>${repo.name} <span style="font-weight:normal; color:#666;">(${repo.tag || '?'})</span></span>
                         ${statusBadge}
@@ -498,21 +476,36 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 `;
 
                 if (repo.error) {
-                    content += `<div style="color:red; font-size:13px;">${repo.error}</div>`;
+                    header += `<div style="color:red; font-size:13px;">${repo.error}</div>`;
                 } else if (repo.assets) {
-                    content += '<div class="asset-list">';
+                    // Generate Arch Select
+                    const archs = Object.keys(repo.assets).sort();
+                    
+                    // Determine initial selection: try exact match, then 'x86_64' if default is 'x86_64', else 'all'
+                    let selectedVal = 'all_files';
+                    if (archs.includes(defaultArch)) selectedVal = defaultArch;
+                    else if (defaultArch === 'x86_64' && archs.includes('x86_64')) selectedVal = 'x86_64';
+                    
+                    header += `
+                        <div style="margin: 10px 0; display:flex; align-items:center; gap:10px; background:#f3f4f6; padding:8px; border-radius:6px;">
+                            <label style="font-size:13px; font-weight:600;">Фильтр:</label>
+                            <select style="padding:4px; border-radius:4px; border:1px solid #ccc; flex:1;" onchange="filterRepoAssets(this)">
+                                <option value="all_files">Показать все (${Object.values(repo.assets).flat().length} файлов)</option>
+                                ${archs.map(a => `<option value="${a}" ${a === selectedVal ? 'selected' : ''}>${a} (${repo.assets[a].length})</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="asset-list">
+                    `;
+                    
+                    // Generate Assets
                     Object.keys(repo.assets).forEach(arch => {
-                        // Filter logic
-                        if (filterArch !== 'all_files' && filterArch !== arch) return;
-                        
                         repo.assets[arch].forEach(asset => {
-                            const currentRepoConf = currentConfig.find(c => c.name === repo.name);
-                            const isChecked = currentRepoConf && currentRepoConf.selected_assets && currentRepoConf.selected_assets.includes(asset.name);
+                            const isChecked = currentRepoConf.selected_assets && currentRepoConf.selected_assets.includes(asset.name);
+                            // Initial visibility
+                            const isVisible = (selectedVal === 'all_files' || selectedVal === arch);
                             
-                            repoHasVisibleAssets = true;
-                            totalShown++;
-                            content += `
-                                <label class="asset-item">
+                            header += `
+                                <label class="asset-item" data-arch="${arch}" style="${isVisible ? '' : 'display:none'}">
                                     <input type="checkbox" data-repo="${repo.name}" value="${asset.name}" ${isChecked ? 'checked' : ''}>
                                     <span>${asset.name}</span>
                                     <span class="badge badge-blue" style="font-size:10px; flex-shrink:0;">${arch}</span>
@@ -520,16 +513,27 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                             `;
                         });
                     });
-                    content += '</div>';
+                    header += '</div>';
                 }
                 
-                if (repoHasVisibleAssets || repo.error || repo.status === 'skipped') {
-                    div.innerHTML = content;
-                    container.appendChild(div);
+                div.innerHTML = header;
+                container.appendChild(div);
+            });
+        }
+        
+        function filterRepoAssets(select) {
+            const val = select.value;
+            // Find parent discovery-item
+            const parent = select.closest('.discovery-item');
+            const items = parent.querySelectorAll('.asset-item');
+            
+            items.forEach(item => {
+                if (val === 'all_files' || item.getAttribute('data-arch') === val) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
                 }
             });
-            
-            document.getElementById('discovery-count').textContent = `Найдено: ${totalShown}`;
         }
 
         function applyDiscovery() {
