@@ -131,7 +131,7 @@ def main():
                 else:
                     is_ok = False # Skip everything else if user was specific
             else:
-                # 2. Heuristic/Regex mode (Legacy)
+                # 2. Heuristic/Regex mode (Smart Filter)
                 
                 # Check exclusions first
                 is_excluded = False
@@ -142,12 +142,20 @@ def main():
                 if is_excluded:
                     continue
 
+                # Universal packages are always welcome unless explicitly excluded
+                is_universal = re.search(r'(all|_all_|noarch|luci-)', file_name, re.IGNORECASE)
+
                 if arch == "all":
-                    if re.search(r'(all|_all_|noarch|luci-)', file_name):
+                    if is_universal:
                         is_ok = True
                 else:
+                    # Specific arch selected (e.g., mips_24kc)
                     if arch in file_name:
                         is_ok = True
+                    # Also include universal packages (like luci-app-*) even if filter is specific
+                    elif is_universal:
+                        is_ok = True
+
                     if arch == "x86_64" and "amd64" in file_name:
                         is_ok = True
             

@@ -106,7 +106,9 @@ def get_arch_from_filename(filename):
         return 'unknown'
         
     base = filename[:-4]
-    parts = base.split('_')
+    # Split by underscore OR hyphen to handle various naming conventions
+    # e.g. "pkg_ver_arch.ipk" or "pkg-ver-arch.ipk"
+    parts = re.split(r'[_-]', base)
     
     arch_prefixes = (
         'x86', 'amd64', 'aarch64', 'arm', 
@@ -120,6 +122,17 @@ def get_arch_from_filename(filename):
         if part.startswith('v') and part[1:].isdigit():
             continue
         if part.startswith(arch_prefixes):
+            # Reconstruct the arch string from the remaining parts
+            # We prefer underscore for the resulting arch name if possible, 
+            # but here we just return the raw suffix found in the file.
+            # Since we split by regex, we need to be careful how we join back if needed.
+            # For simplest match, just returning the found part and subsequent parts 
+            # joined by underscore is usually the convention in OpenWrt feeds,
+            # but here we might just want to return the part that matched + specific suffixes.
+            
+            # Simplified approach: return the rest of the string from the original filename 
+            # starting from this part? No, that's hard because we split it.
+            # Let's just join the remaining parts with underscore as a normalized form
             return "_".join(parts[i:])
             
     if 'luci-' in filename: return 'all'
