@@ -114,6 +114,10 @@ def main():
         assets = release_data.get('assets', [])
         ipk_assets = [a for a in assets if a.get('name', '').endswith('.ipk')]
 
+        # Phase 1: Identify files to sync
+        files_to_sync = []
+        prefixes_in_release = set()
+        
         for asset in ipk_assets:
             file_name = asset.get('name')
             download_url = asset.get('browser_download_url')
@@ -143,7 +147,7 @@ def main():
                     continue
 
                 # Universal packages are always welcome unless explicitly excluded
-                is_universal = re.search(r'(all|_all_|noarch|luci-)', file_name, re.IGNORECASE)
+                is_universal = re.search(r'(_all|_noarch|-all|-noarch)', file_name, re.IGNORECASE)
 
                 if arch == "all":
                     if is_universal:
@@ -161,9 +165,20 @@ def main():
             
             # --- End Logic Update ---
 
-            if not is_ok:
-                continue
+            if is_ok:
+                files_to_sync.append(asset)
+                # Calculate prefix for cleanup (name before version)
+                # Assuming standard format: name_version_arch.ipk
+                parts = file_name.split('_')
+                if len(parts) > 1:
+                    prefixes_in_release.add(parts[0])
 
+        # Phase 2: Download
+        target_file_names = {a.get('name') for a in files_to_sync}
+
+        for asset in files_to_sync:
+            file_name = asset.get('name')
+            download_url = asset.get('browser_download_url')
             dest_file = target_dir / file_name
             
             if not dest_file.exists():
@@ -171,14 +186,6 @@ def main():
                 
                 temp_file = TMP_DIR / file_name
                 if download_file(download_url, temp_file):
-                    prefix = file_name.split('_')[0]
-                    for existing_file in target_dir.glob(f"{prefix}_*.ipk"):
-                        log(f"   🧹 [SYNC] Удаление: {existing_file.name}")
-                        try:
-                            existing_file.unlink()
-                        except Exception as e:
-                            log(f"   ⚠️ Не удалось удалить {existing_file.name}: {e}")
-
                     try:
                         shutil.move(str(temp_file), str(dest_file))
                         updates_found = True
@@ -187,6 +194,18 @@ def main():
                 else:
                     if temp_file.exists():
                         temp_file.unlink()
+
+        # Phase 3: Cleanup
+        # Remove files that match the prefixes of updated packages but are NOT in the current sync list
+        for prefix in prefixes_in_release:
+            for existing_file in target_dir.glob(f"{prefix}_*.ipk"):
+                if existing_file.name not in target_file_names:
+                    log(f"   🧹 [SYNC] Удаление устаревшей версии/варианта: {existing_file.name}")
+                    try:
+                        existing_file.unlink()
+                        updates_found = True
+                    except Exception as e:
+                        log(f"   ⚠️ Не удалось удалить {existing_file.name}: {e}")
 
     try:
         shutil.rmtree(TMP_DIR)
