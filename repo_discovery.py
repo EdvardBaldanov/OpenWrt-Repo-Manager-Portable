@@ -223,11 +223,13 @@ def discover_releases(force=False):
             # Still keep old entry if fetch fails? 
             # Better to keep it so we don't lose config on temporary network error
             if prev_entry:
+                prev_entry.pop('selected_assets', None)
                 new_config.append(prev_entry)
                 
         except Exception as e:
             results.append({"name": full_name, "error": f"Error: {str(e)}"})
             if prev_entry:
+                prev_entry.pop('selected_assets', None)
                 new_config.append(prev_entry)
 
     # 3. Save the regenerated config to repo_sources.json automatically

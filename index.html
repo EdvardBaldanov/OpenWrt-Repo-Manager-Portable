@@ -316,8 +316,8 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
             <div id="discovery-results"></div>
             
             <div id="discovery-actions" style="display:none; margin-top:20px; text-align:right; border-top: 1px solid #eee; padding-top: 20px;">
-                 <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Отметьте файлы, которые хотите "закрепить" в конфиге. Если ничего не выбрано для репозитория, будет работать старая логика (regex/filter).</p>
-                 <button class="btn btn-update" onclick="applyDiscovery()">✅ Применить выбранное</button>
+                 <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Выберите один или несколько файлов нужной архитектуры. Фильтр <code>filter_arch</code> будет установлен автоматически на основе вашего выбора. Универсальные пакеты (all/noarch) будут скачиваться автоматически.</p>
+                 <button class="btn btn-update" onclick="applyDiscovery()">✅ Применить фильтр</button>
             </div>
         </div>
     </div>
@@ -514,8 +514,15 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     // Render assets (initially all visible)
                     archs.forEach(arch => {
                         repo.assets[arch].forEach(asset => {
+                            // Check if this arch matches the current filter_arch
                             const currentRepoConf = currentConfig.find(c => c.name === repo.name) || {};
-                            const isChecked = currentRepoConf.selected_assets && currentRepoConf.selected_assets.includes(asset.name);
+                            // Heuristic check: if current filter is 'all', check nothing specific.
+                            // If current filter matches this asset's arch, check it.
+                            let isChecked = false;
+                            if (currentRepoConf.filter_arch && currentRepoConf.filter_arch !== 'all') {
+                                if (currentRepoConf.filter_arch === arch) isChecked = true;
+                            }
+
                             header += `
                                 <label class="asset-item" data-arch="${arch}">
                                     <input type="checkbox" data-repo="${repo.name}" value="${asset.name}" ${isChecked ? 'checked' : ''}>
@@ -661,32 +668,43 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
         }
 
         function applyDiscovery() {
-            // Collect checked boxes
+            // Collect checked items to determine filter
             const checkboxes = document.querySelectorAll('#discovery-results input[type="checkbox"]');
-            const selectedMap = {}; // repoName -> [assets]
+            const repoChoices = {}; // repoName -> { arch: string }
             
             checkboxes.forEach(cb => {
                 if (cb.checked) {
                     const repo = cb.getAttribute('data-repo');
-                    if (!selectedMap[repo]) selectedMap[repo] = [];
-                    selectedMap[repo].push(cb.value);
+                    // Get arch from the parent label's data-arch attribute
+                    const arch = cb.closest('.asset-item').getAttribute('data-arch');
+                    
+                    if (!repoChoices[repo]) {
+                         repoChoices[repo] = { arch: arch };
+                    }
+                    // Currently we just take the first one selected. 
+                    // Ideally we might check for consistency, but simplicity first.
                 }
             });
 
             // Update Config
             let changed = false;
             currentConfig = currentConfig.map(repo => {
-                // If we have selections for this repo, update selected_assets
-                // IMPORTANT: If user unchecked everything for a repo that was displayed, we should probably clear selected_assets
-                
-                // Find if this repo was present in discovery data (to avoid clearing repos that failed or weren't scanned)
                 const wasScanned = discoveredData.find(d => d.name === repo.name && !d.error);
                 
                 if (wasScanned) {
-                    const newSelection = selectedMap[repo.name] || [];
-                    // Only update if changed
-                    repo.selected_assets = newSelection;
-                    repo.last_tag = wasScanned.tag; // Also update tag
+                    const choice = repoChoices[repo.name];
+                    
+                    // Always clear legacy selected_assets
+                    delete repo.selected_assets;
+                    
+                    if (choice) {
+                         // Set filter to the chosen architecture
+                         repo.filter_arch = choice.arch;
+                    } 
+                    // If nothing selected, we might want to default to 'all' or keep existing?
+                    // Let's not change filter_arch if nothing selected, just update tag.
+                    
+                    repo.last_tag = wasScanned.tag; 
                     changed = true;
                 }
                 return repo;
@@ -696,7 +714,7 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
             closeDiscovery();
             saveConfig(); // Auto save
             setTimeout(loadConfig, 500); // Reload views to reflect changes
-            alert("Конфигурация обновлена! 'selected_assets' и 'last_tag' актуализированы.");
+            alert("Фильтр архитектур обновлен! Пакеты 'all'/'noarch' будут включены автоматически.");
         }
 
         // Helper
