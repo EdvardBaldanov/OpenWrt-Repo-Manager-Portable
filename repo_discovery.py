@@ -30,8 +30,15 @@ def load_existing_sources_map():
             with open(SOURCES_FILE, 'r') as f:
                 data = json.load(f)
                 for item in data:
-                    # Using 'name' as key, assuming name corresponds to 'owner/repo' or simple name
-                    mapping[item.get('name')] = item
+                    api_url = item.get('api_url', '')
+                    # Extract owner/repo from https://api.github.com/repos/owner/repo/...
+                    match = re.search(r'repos/([^/]+/[^/]+)', api_url)
+                    if match:
+                        repo_key = match.group(1)
+                        mapping[repo_key] = item
+                    else:
+                        # Fallback to name if api_url is missing or doesn't match
+                        mapping[item.get('name')] = item
         except:
             pass
     return mapping
@@ -149,7 +156,6 @@ def discover_releases(force=False):
             "api_url": "", # Will be filled below
             "filter_arch": prev_entry.get('filter_arch', 'all'), # Preserve or default
             "exclude_asset_keywords": prev_entry.get('exclude_asset_keywords', []),
-            "selected_assets": prev_entry.get('selected_assets', []),
             "last_tag": prev_entry.get('last_tag', '')
         }
         
@@ -158,14 +164,10 @@ def discover_releases(force=False):
             
             if pinned_tag:
                 release = gh_repo.get_release(pinned_tag)
-                # API URL for a specific tag is different
-                # But for our sync script (repo_sync.py) that expects 'assets' in JSON, 
-                # we usually use the release API endpoint.
-                # GitHub API for release by tag: /repos/{owner}/{repo}/releases/tags/{tag}
-                entry['api_url'] = release.url 
+                entry['api_url'] = f"https://api.github.com/repos/{full_name}/releases/tags/{pinned_tag}"
             else:
                 release = gh_repo.get_latest_release()
-                entry['api_url'] = release.url
+                entry['api_url'] = f"https://api.github.com/repos/{full_name}/releases/latest"
 
             latest_tag = release.tag_name
             

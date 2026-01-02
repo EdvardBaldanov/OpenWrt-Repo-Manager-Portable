@@ -4,3 +4,5 @@ update.log
 cron_error.log
 *.ipk
 bin/__pycache__/
+gemini.md
+!DONT_USE_JUST_READ_generated_repo_sources.json
