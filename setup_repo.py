@@ -54,7 +54,7 @@ def main():
 
     # Создание структуры папок
     print(f"📂 Создание директорий в {REPO_ROOT}...")
-    run_command(f"sudo mkdir -p {REPO_ROOT}/x86_64 {REPO_ROOT}/all", shell=True)
+    run_command(f"sudo mkdir -p {REPO_ROOT}", shell=True)
     run_command(f"sudo chown -R {USER_NAME}:{USER_NAME} {REPO_ROOT}", shell=True)
 
     # Настройка прав на локальные конфиги (чтобы dashboard мог их менять)

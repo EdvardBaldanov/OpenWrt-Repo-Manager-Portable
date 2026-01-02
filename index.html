@@ -204,11 +204,9 @@
                 <h2>🚀 Custom Репозиторий</h2>
                 <p>Выполните эти команды на роутере:</p>
 
-                <h4>1. Добавление источников</h4>
-                <div class="code-wrapper">
-                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                    <code>echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" >> /etc/opkg/customfeeds.conf
-echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/customfeeds.conf</code>
+                <h4>1. Добавление источников (Генерируется из конфига)</h4>
+                <div id="client-feeds-container">
+                    <p style="font-size:13px; color:#666;">Загрузка списка источников...</p>
                 </div>
 
                 <h4>2. Ключ подписи</h4>
@@ -287,7 +285,6 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                         <tr><td><code>api_url</code></td><td>URL GitHub API (latest release).</td></tr>
                         <tr><td><code>filter_arch</code></td><td>Целевая архитектура (x86_64, all).</td></tr>
                         <tr><td><code>exclude_asset_keywords</code></td><td>Исключать файлы по словам.</td></tr>
-                        <tr><td><code>selected_assets</code></td><td><b>Новое:</b> Список конкретных файлов для скачивания (приоритет над фильтрами). Заполняется Сканером.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -351,7 +348,40 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                 const resConf = await fetch('/api/config');
                 currentConfig = await resConf.json();
                 document.getElementById('config-editor').value = JSON.stringify(currentConfig, null, 2);
+                
+                // Update Client Tab Feeds
+                renderClientFeeds();
             } catch (e) { console.error('Error loading config', e); }
+        }
+        
+        function renderClientFeeds() {
+            const container = document.getElementById('client-feeds-container');
+            if(!currentConfig || currentConfig.length === 0) {
+                container.innerHTML = '<p>Конфигурация пуста.</p>';
+                return;
+            }
+            
+            // Extract unique active architectures
+            const uniqueArchs = [...new Set(currentConfig.map(c => c.filter_arch).filter(a => a))];
+            
+            if(uniqueArchs.length === 0) {
+                container.innerHTML = '<p>Нет активных архитектур.</p>';
+                return;
+            }
+
+            let codeBlock = '';
+            uniqueArchs.sort().forEach(arch => {
+                // Sanitize name for feed name (replace dots/slashes with underscore)
+                const feedName = arch.replace(/[^a-zA-Z0-9_]/g, '_');
+                codeBlock += `echo "src/gz custom_${feedName} http://${window.location.host}/${arch}" >> /etc/opkg/customfeeds.conf\n`;
+            });
+            
+            container.innerHTML = `
+                <div class="code-wrapper">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <code>${codeBlock}</code>
+                </div>
+            `;
         }
 
         async function saveTracking() {
@@ -514,6 +544,9 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     // Render assets (initially all visible)
                     archs.forEach(arch => {
                         repo.assets[arch].forEach(asset => {
+                            // Backend auto-excludes entware packages, so hide them here too
+                            if (asset.name.toLowerCase().includes('entware')) return;
+
                             // Check if this arch matches the current filter_arch
                             const currentRepoConf = currentConfig.find(c => c.name === repo.name) || {};
                             // Heuristic check: if current filter is 'all', check nothing specific.
