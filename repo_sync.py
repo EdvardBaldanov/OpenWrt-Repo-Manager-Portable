@@ -143,6 +143,12 @@ def main():
                     if kw in file_name:
                         is_excluded = True
                         break
+                
+                # Auto-exclude entware packages as they break opkg-make-index (different structure)
+                # and are not compatible with standard OpenWrt
+                if 'entware' in file_name.lower():
+                    is_excluded = True
+
                 if is_excluded:
                     continue
 
