@@ -86,6 +86,8 @@ def main():
         sys.exit(1)
 
     updates_found = False
+    has_network_errors = False
+    global_expected_files = set()
 
     for pkg in sources:
         name = pkg.get('name')
@@ -109,6 +111,7 @@ def main():
         release_data = get_json(api_url)
         if not release_data or 'assets' not in release_data:
             log(f"   ❌ [SYNC] Нет данных о релизах для {name}")
+            has_network_errors = True
             continue
 
         assets = release_data.get('assets', [])
@@ -173,6 +176,9 @@ def main():
 
             if is_ok:
                 files_to_sync.append(asset)
+                # Track for global cleanup
+                global_expected_files.add((target_dir / file_name).resolve())
+                
                 # Calculate prefix for cleanup (name before version)
                 # Assuming standard format: name_version_arch.ipk
                 parts = file_name.split('_')
@@ -201,7 +207,7 @@ def main():
                     if temp_file.exists():
                         temp_file.unlink()
 
-        # Phase 3: Cleanup
+        # Phase 3: Local Cleanup (Old versions of ACTIVE packages)
         # Remove files that match the prefixes of updated packages but are NOT in the current sync list
         for prefix in prefixes_in_release:
             for existing_file in target_dir.glob(f"{prefix}_*.ipk"):
@@ -217,6 +223,36 @@ def main():
         shutil.rmtree(TMP_DIR)
     except Exception as e:
         pass
+
+    # Phase 4: Global Garbage Collection (Orphans)
+    # Only run if we had NO network errors (to prevent wiping repo if GitHub is down)
+    if not has_network_errors:
+        log("🧹 [GC] Проверка на наличие осиротевших файлов...")
+        orphan_count = 0
+        
+        # Scan all .ipk files in the repo root recursively
+        for file_path in REPO_ROOT.rglob("*.ipk"):
+            try:
+                # Resolve ensures we have absolute path to compare
+                if file_path.resolve() not in global_expected_files:
+                    log(f"   🗑️ [GC] Удаление осиротевшего файла: {file_path.name}")
+                    file_path.unlink()
+                    orphan_count += 1
+                    updates_found = True
+            except Exception as e:
+                log(f"   ⚠️ [GC] Ошибка удаления {file_path}: {e}")
+        
+        # Cleanup empty directories
+        for dir_path in REPO_ROOT.rglob("*"):
+            if dir_path.is_dir():
+                try:
+                    # rmdir fails if not empty, which is what we want
+                    dir_path.rmdir()
+                    log(f"   🗑️ [GC] Удалена пустая папка: {dir_path.name}")
+                except OSError:
+                    pass # Directory not empty
+    else:
+        log("⚠️ [GC] Пропущен из-за ошибок сети (безопасный режим)")
 
     if updates_found:
         log("✅ [SYNC] Синхронизация завершена. Есть новые пакеты.")
