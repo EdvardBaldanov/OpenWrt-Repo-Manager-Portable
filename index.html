@@ -57,18 +57,15 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Code Block */
-        /* Default inline code (строчный код) */
         code {
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
             font-size: 0.9em;
             padding: 2px 6px;
-            background: #f3f4f6; /* Светло-серый фон для контраста */
-            color: #1f2937;       /* Темно-серый текст */
+            background: #f3f4f6; 
+            color: #1f2937;
             border-radius: 4px;
             border: 1px solid #e5e7eb;
         }
-
-        /* Block code inside wrapper (темные блоки с кодом) */
         .code-wrapper {
             position: relative;
             margin: 12px 0 24px;
@@ -77,24 +74,19 @@
             overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
         }
-
         .code-wrapper code {
             display: block;
             background: transparent;
             color: var(--code-text);
             padding: 20px;
-            padding-right: 70px; /* Отступ для кнопки */
+            padding-right: 70px;
             font-size: 14px;
             line-height: 1.5;
             overflow-x: auto;
-            white-space: pre; /* Важно для скролла */
+            white-space: pre;
             margin: 0;
             border: none;
         }
-        
-        pre { margin: 0; }
-        
-        /* Скроллбар для кода */
         code::-webkit-scrollbar { height: 8px; }
         code::-webkit-scrollbar-track { background: #1f2937; }
         code::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
@@ -118,7 +110,7 @@
         .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: rgba(255,255,255,0.3); }
 
         /* Editor & Log */
-        textarea#config-editor {
+        textarea#config-editor, textarea#tracking-editor {
             width: 100%;
             height: 400px;
             background: var(--code-bg);
@@ -132,11 +124,11 @@
             font-size: 14px;
             line-height: 1.5;
         }
-        textarea#config-editor:focus { outline: 2px solid var(--primary); border-color: transparent; }
+        textarea#config-editor:focus, textarea#tracking-editor:focus { outline: 2px solid var(--primary); border-color: transparent; }
         
         #log-view {
             background: #111827;
-            color: #10b981; /* Зеленоватый терминальный цвет */
+            color: #10b981;
             padding: 20px;
             border-radius: 8px;
             font-family: monospace;
@@ -166,6 +158,9 @@
         
         .btn-update { background: #10b981; color: white; }
         .btn-update:hover { background: #059669; }
+        
+        .btn-scan { background: #6366f1; color: white; }
+        .btn-scan:hover { background: #4f46e5; }
 
         /* Help Table */
         table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -173,13 +168,32 @@
         th { background: #f9fafb; font-weight: 600; color: var(--text-main); }
         td { background: #fff; }
         tr:last-child td { border-bottom: none; }
-        code.inline { padding: 2px 6px; background: #f3f4f6; color: #db2777; border-radius: 4px; font-family: monospace; font-size: 0.9em; display: inline; border: 1px solid #e5e7eb; }
+        
+        /* Modal */
+        #discovery-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto; backdrop-filter: blur(2px); }
+        .modal-card { margin: 50px auto; max-width: 900px; position:relative; animation: slideUp 0.3s ease; background: var(--card-bg); padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .discovery-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .discovery-header { font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .asset-list { display: grid; grid-template-columns: 1fr; gap: 4px; }
+        .asset-item { font-size: 13px; display: flex; align-items: center; gap: 8px; padding: 6px; background: #f9fafb; border-radius: 4px; }
+        .asset-item span { word-break: break-all; }
+        .asset-item:hover { background: #e5e7eb; }
+        
+        .discovery-filter-box { margin-bottom: 15px; padding: 10px; background: #f3f4f6; border-radius: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .filter-select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; flex: 1; min-width: 100px; max-width: 200px; }
+        .discovery-count { font-size: 12px; color: #666; margin-left: auto; white-space: nowrap; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #e5e7eb; color: #4b5563; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
     </style>
 </head>
 <body>
     <div class="tabs">
         <button class="tab active" onclick="showTab('client')">📡 Клиент (Роутер)</button>
         <button class="tab" onclick="showTab('manager')">⚙️ Управление</button>
+        <button class="tab" onclick="showTab('settings')">🔑 Настройки</button>
         <button class="tab" onclick="showTab('help')">❓ Справка</button>
     </div>
 
@@ -190,11 +204,9 @@
                 <h2>🚀 Custom Репозиторий</h2>
                 <p>Выполните эти команды на роутере:</p>
 
-                <h4>1. Добавление источников</h4>
-                <div class="code-wrapper">
-                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                    <code>echo "src/gz custom_x86_64 http://<span class="host"></span>/x86_64" >> /etc/opkg/customfeeds.conf
-echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/customfeeds.conf</code>
+                <h4>1. Добавление источников (Генерируется из конфига)</h4>
+                <div id="client-feeds-container">
+                    <p style="font-size:13px; color:#666;">Загрузка списка источников...</p>
                 </div>
 
                 <h4>2. Ключ подписи</h4>
@@ -208,38 +220,57 @@ echo "src/gz custom_all http://<span class="host"></span>/all" >> /etc/opkg/cust
                     <button class="copy-btn" onclick="copyCode(this)">Copy</button>
                     <code>opkg update</code>
                 </div>
-
-                <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-                <h3>🗑️ Удаление</h3>
-                <p>Для удаления удалите соответствующие строки из <code>/etc/opkg/customfeeds.conf</code> и выполните:</p>
-                <div class="code-wrapper">
-                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                    <code>sed -i '/custom_x86_64/d' /etc/opkg/customfeeds.conf
-sed -i '/custom_all/d' /etc/opkg/customfeeds.conf
-rm /var/opkg-lists/custom_*
-opkg update</code>
-                </div>
             </div>
         </div>
 
         <!-- Manager Tab -->
         <div id="manager" class="tab-content">
             <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <h2>⚙️ Управление источниками</h2>
-                    <button class="btn btn-update" onclick="runUpdate()">🔄 Запустить обновление (Update & Publish)</button>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap: wrap; gap: 10px;">
+                    <h2>📝 Список отслеживания (Tracking)</h2>
+                    <div>
+                        <button class="btn btn-scan" onclick="openDiscovery()">🔎 Сканер (Discovery)</button>
+                        <button class="btn btn-update" onclick="runUpdate()">🔄 Обновить репо</button>
+                    </div>
                 </div>
-                
-                <textarea id="config-editor"></textarea>
+                <p style="font-size: 13px; margin-top:-10px;">Добавляйте по одному <code>owner/repo</code> или URL релиза на строку. Сохраните, затем запустите Сканер.</p>
+                <textarea id="tracking-editor" placeholder="owner/repo&#10;https://github.com/user/repo"></textarea>
                 <div style="margin-top: 10px; text-align: right;">
-                    <span id="save-status" style="margin-right: 10px; font-size: 14px; color: #666;"></span>
-                    <button class="btn btn-primary" onclick="saveConfig()">💾 Сохранить изменения</button>
+                    <span id="tracking-status" style="margin-right: 10px; font-size: 14px; color: #666;"></span>
+                    <button class="btn btn-primary" onclick="saveTracking()">💾 Сохранить список</button>
                 </div>
+            </div>
+
+            <div class="card">
+                <h3>⚙️ Сгенерированный конфиг (Sources)</h3>
+                <p style="font-size: 13px;">Технический файл <code>repo_sources.json</code>. Обновляется автоматически после Сканера.</p>
+                <textarea id="config-editor" readonly style="height: 200px; opacity: 0.8;"></textarea>
             </div>
 
             <div class="card">
                 <h3>📄 Лог процессов</h3>
                 <pre id="log-view">Загрузка лога...</pre>
+            </div>
+        </div>
+        
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="card">
+                <h2>🔑 Глобальные настройки</h2>
+                <div style="max-width: 600px;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display:block; font-weight:600; margin-bottom:8px;">GitHub Personal Access Token</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="password" id="gh-token" placeholder="ghp_..." style="flex: 1; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                            <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
+                        </div>
+                        <p style="font-size:13px; color: var(--text-muted); margin-top:8px;">
+                            Токен нужен для обхода лимитов API GitHub (60 запросов/час -> 5000/час).<br>
+                            <a href="https://github.com/settings/tokens" target="_blank" style="color: var(--primary);">Получить токен</a> (нужны права только на чтение публичных репозиториев).
+                        </p>
+                    </div>
+                    <div id="settings-status"></div>
+                </div>
             </div>
         </div>
 
@@ -248,105 +279,499 @@ opkg update</code>
             <div class="card">
                 <h3>📘 Справка по repo_sources.json</h3>
                 <table>
-                    <thead><tr><th>Поле</th><th>Описание</th><th>Пример</th></tr></thead>
+                    <thead><tr><th>Поле</th><th>Описание</th></tr></thead>
                     <tbody>
-                        <tr><td><code>name</code></td><td>Имя пакета (для логов и группировки)</td><td><code>"amneziawg"</code></td></tr>
-                        <tr><td><code>api_url</code></td><td>GitHub API URL (latest release)</td><td><code>".../releases/latest"</code></td></tr>
-                        <tr><td><code>filter_arch</code></td><td>Архитектура репозитория, куда класть файлы</td><td><code>"x86_64"</code> или <code>"all"</code></td></tr>
-                        <tr><td><code>exclude_asset_keywords</code></td><td>Исключать файл, если имя содержит эти слова</td><td><code>["entware", "mips"]</code></td></tr>
+                        <tr><td><code>name</code></td><td>Имя (для логов).</td></tr>
+                        <tr><td><code>api_url</code></td><td>URL GitHub API (latest release).</td></tr>
+                        <tr><td><code>filter_arch</code></td><td>Целевая архитектура (x86_64, all).</td></tr>
+                        <tr><td><code>exclude_asset_keywords</code></td><td>Исключать файлы по словам.</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- Discovery Modal -->
+    <div id="discovery-modal">
+        <div class="card modal-card">
+            <span onclick="closeDiscovery()" style="position:absolute; top:20px; right:20px; cursor:pointer; font-size:24px;">&times;</span>
+            <h2>🔎 Умный Сканер</h2>
+            <p>Анализирует репозитории из вашего конфига и находит доступные пакеты.</p>
+            
+            <div style="margin-bottom:20px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+                <label style="margin-right: 15px;">
+                    <input type="checkbox" id="force-scan"> Принудительно (Force Refresh)
+                </label>
+                <button class="btn btn-primary" id="start-scan-btn" onclick="runDiscovery()">🚀 Запустить сканирование</button>
+            </div>
+            
+            <div id="discovery-loader" style="display:none; text-align:center; padding: 20px;">
+                <div style="font-size: 24px;">⏳</div>
+                <p>Сканирование... Это может занять время.</p>
+            </div>
+
+            <div id="discovery-results"></div>
+            
+            <div id="discovery-actions" style="display:none; margin-top:20px; text-align:right; border-top: 1px solid #eee; padding-top: 20px;">
+                 <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Выберите один или несколько файлов нужной архитектуры. Фильтр <code>filter_arch</code> будет установлен автоматически на основе вашего выбора. Универсальные пакеты (all/noarch) будут скачиваться автоматически.</p>
+                 <button class="btn btn-update" onclick="applyDiscovery()">✅ Применить фильтр</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Setup Hostname
         const host = window.location.host;
         document.querySelectorAll('.host').forEach(el => el.textContent = host);
 
-        // Tabs Logic
+        let currentConfig = [];
+        let discoveredData = [];
+
         function showTab(id) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             event.target.classList.add('active');
             document.getElementById(id).classList.add('active');
+            
             if(id === 'manager') loadConfig();
+            if(id === 'settings') loadSettings();
         }
 
-        // Copy Function
-        function copyCode(btn) {
-            const text = btn.nextElementSibling.innerText;
-            if (!navigator.clipboard) {
-                 const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-                 showCopied(btn);
-            } else {
-                navigator.clipboard.writeText(text).then(() => showCopied(btn));
-            }
-        }
-        function showCopied(btn) {
-            const orig = btn.innerText; btn.innerText = 'Copied!'; btn.style.color = '#4caf50';
-            setTimeout(() => { btn.innerText = orig; btn.style.color = '#ccc'; }, 2000);
-        }
-
-        // API Functions
+        // --- Config & Tracking Logic ---
         async function loadConfig() {
             try {
-                const res = await fetch('/api/config');
-                const data = await res.json();
-                document.getElementById('config-editor').value = JSON.stringify(data, null, 2);
+                // Load Tracking List
+                const resTrack = await fetch('/api/tracking');
+                const textTrack = await resTrack.text();
+                document.getElementById('tracking-editor').value = textTrack;
+
+                // Load Generated Config
+                const resConf = await fetch('/api/config');
+                currentConfig = await resConf.json();
+                document.getElementById('config-editor').value = JSON.stringify(currentConfig, null, 2);
+                
+                // Update Client Tab Feeds
+                renderClientFeeds();
             } catch (e) { console.error('Error loading config', e); }
         }
+        
+        function renderClientFeeds() {
+            const container = document.getElementById('client-feeds-container');
+            if(!currentConfig || currentConfig.length === 0) {
+                container.innerHTML = '<p>Конфигурация пуста.</p>';
+                return;
+            }
+            
+            // Extract unique active architectures
+            const uniqueArchs = [...new Set(currentConfig.map(c => c.filter_arch).filter(a => a))];
+            
+            if(uniqueArchs.length === 0) {
+                container.innerHTML = '<p>Нет активных архитектур.</p>';
+                return;
+            }
 
-        async function saveConfig() {
+            let codeBlock = '';
+            uniqueArchs.sort().forEach(arch => {
+                // Sanitize name for feed name (replace dots/slashes with underscore)
+                const feedName = arch.replace(/[^a-zA-Z0-9_]/g, '_');
+                codeBlock += `echo "src/gz custom_${feedName} http://${window.location.host}/${arch}" >> /etc/opkg/customfeeds.conf\n`;
+            });
+            
+            container.innerHTML = `
+                <div class="code-wrapper">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <code>${codeBlock}</code>
+                </div>
+            `;
+        }
+
+        async function saveTracking() {
             const btn = document.querySelector('.btn-primary');
-            const status = document.getElementById('save-status');
+            const status = document.getElementById('tracking-status');
             try {
-                const text = document.getElementById('config-editor').value;
-                const json = JSON.parse(text); // Validate JSON
-                
+                const text = document.getElementById('tracking-editor').value;
                 btn.disabled = true;
-                const res = await fetch('/api/config', {
+                const res = await fetch('/api/tracking', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(json)
+                    body: text
                 });
-                
                 if(res.ok) {
-                    status.textContent = "Сохранено!";
-                    status.style.color = "green";
-                } else {
-                    throw new Error("Save failed");
-                }
+                    status.textContent = "Список сохранен!"; status.style.color = "green";
+                } else throw new Error("Save failed");
             } catch (e) {
-                status.textContent = "Ошибка: " + e.message;
-                status.style.color = "red";
+                status.textContent = "Ошибка: " + e.message; status.style.color = "red";
             } finally {
                 setTimeout(() => { status.textContent = ""; btn.disabled = false; }, 3000);
             }
         }
 
-        async function runUpdate() {
-            if(!confirm("Запустить обновление пакетов и пересборку индексов?")) return;
+        async function saveConfig() {
+            // Internal save for repo_sources.json (used by discovery)
             try {
-                const res = await fetch('/api/update', { method: 'POST' });
-                alert("Обновление запущено в фоне. Следите за логом.");
-                refreshLog();
-            } catch(e) { alert("Ошибка запуска: " + e); }
+                const text = document.getElementById('config-editor').value;
+                const json = JSON.parse(text);
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(json)
+                });
+                if(res.ok) currentConfig = json;
+            } catch (e) { console.error("Internal config save failed", e); }
         }
 
+        // --- Settings Logic ---
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                const input = document.getElementById('gh-token');
+                if (data.has_token) {
+                    input.placeholder = "Токен установлен (" + data.github_token + ")";
+                    input.value = ""; 
+                }
+            } catch(e) {}
+        }
+
+        async function saveSettings() {
+            const token = document.getElementById('gh-token').value;
+            // Removed empty check to allow clearing token
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({github_token: token})
+                });
+                
+                if(res.ok) {
+                    alert("Настройки сохранены");
+                    document.getElementById('gh-token').value = "";
+                    loadSettings();
+                } else {
+                    // Check if response is JSON
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        const err = await res.json();
+                        alert("Ошибка сервера: " + (err.error || res.status));
+                    } else {
+                        // It's likely HTML (502/500 from Nginx)
+                        const text = await res.text();
+                        console.error("Non-JSON Error Response:", text);
+                        alert("Критическая ошибка сервера (см. консоль): " + res.status + " " + res.statusText);
+                    }
+                }
+            } catch(e) { alert("Ошибка сети или парсинга: " + e); }
+        }
+
+        // --- Discovery Logic ---
+        function openDiscovery() {
+            document.getElementById('discovery-modal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            if(document.getElementById('config-editor').value) {
+                try {
+                   currentConfig = JSON.parse(document.getElementById('config-editor').value);
+                } catch(e) {}
+            }
+        }
+        function closeDiscovery() {
+            document.getElementById('discovery-modal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        async function runDiscovery() {
+            const force = document.getElementById('force-scan').checked;
+            document.getElementById('discovery-loader').style.display = 'block';
+            document.getElementById('discovery-results').innerHTML = '';
+            document.getElementById('discovery-actions').style.display = 'none';
+            document.getElementById('start-scan-btn').disabled = true;
+
+            try {
+                await saveConfig(); 
+                const res = await fetch(`/api/discover?force=${force}`);
+                const data = await res.json();
+                
+                // Fix: Reload config to get new repos created by backend
+                await loadConfig();
+                
+                discoveredData = data;
+                renderDiscovery(data);
+                document.getElementById('discovery-actions').style.display = 'block';
+            } catch(e) {
+                document.getElementById('discovery-results').innerHTML = `<p style="color:red">Ошибка: ${e.message}</p>`;
+            } finally {
+                document.getElementById('discovery-loader').style.display = 'none';
+                document.getElementById('start-scan-btn').disabled = false;
+            }
+        }
+
+        function renderDiscovery(data) {
+            const container = document.getElementById('discovery-results');
+            container.innerHTML = '';
+            
+            if (data.error) {
+                container.innerHTML = `<p style="color:red">${data.error}</p>`;
+                return;
+            }
+
+            data.forEach((repo, idx) => {
+                const div = document.createElement('div');
+                div.className = 'discovery-item';
+                div.id = `repo-${idx}`;
+                
+                let statusBadge = '';
+                if(repo.status === 'skipped') statusBadge = '<span class="badge">Кэш (без изменений)</span>';
+                else if(repo.error) statusBadge = '<span class="badge" style="background:#fee2e2; color:#991b1b">Ошибка</span>';
+                else statusBadge = '<span class="badge badge-green">OK</span>';
+
+                let header = `
+                    <div class="discovery-header">
+                        <span>${repo.name} <span style="font-weight:normal; color:#666;">(${repo.tag || '?'})</span></span>
+                        ${statusBadge}
+                    </div>
+                `;
+
+                if (repo.error) {
+                    header += `<div style="color:red; font-size:13px;">${repo.error}</div>`;
+                } else if (repo.assets) {
+                    // Placeholder for filters
+                    header += `
+                        <div class="discovery-filter-box" id="filters-${idx}">
+                            <!-- Filters injected by JS -->
+                        </div>
+                        <div class="asset-list" id="assets-${idx}">
+                    `;
+                    
+                    const archs = Object.keys(repo.assets).sort();
+                    
+                    // Render assets (initially all visible)
+                    archs.forEach(arch => {
+                        repo.assets[arch].forEach(asset => {
+                            // Backend auto-excludes entware packages, so hide them here too
+                            if (asset.name.toLowerCase().includes('entware')) return;
+
+                            // Check if this arch matches the current filter_arch
+                            const currentRepoConf = currentConfig.find(c => c.name === repo.name) || {};
+                            // Heuristic check: if current filter is 'all', check nothing specific.
+                            // If current filter matches this asset's arch, check it.
+                            let isChecked = false;
+                            if (currentRepoConf.filter_arch && currentRepoConf.filter_arch !== 'all') {
+                                if (currentRepoConf.filter_arch === arch) isChecked = true;
+                            }
+
+                            header += `
+                                <label class="asset-item" data-arch="${arch}">
+                                    <input type="checkbox" data-repo="${repo.name}" value="${asset.name}" ${isChecked ? 'checked' : ''}>
+                                    <span>${asset.name}</span>
+                                    <span class="badge badge-blue" style="font-size:10px; flex-shrink:0;">${arch}</span>
+                                </label>
+                            `;
+                        });
+                    });
+                    header += '</div>';
+                }
+                
+                div.innerHTML = header;
+                container.appendChild(div);
+
+                if (repo.assets) {
+                    initCascadingFilters(idx, Object.keys(repo.assets));
+                }
+            });
+        }
+
+        function initCascadingFilters(idx, archList) {
+            const container = document.getElementById(`filters-${idx}`);
+            if(!container) return;
+
+            // Prepare data structure for 3 levels
+            // Level 1 -> [Level 2 -> [Level 3]]
+            // Split arch strings by '_'
+            
+            // Initial render
+            container.innerHTML = `
+                <select class="filter-select" id="f1-${idx}" onchange="updateFilters(${idx}, 1)">
+                    <option value="">Все Архитектуры</option>
+                </select>
+                <select class="filter-select" id="f2-${idx}" onchange="updateFilters(${idx}, 2)" style="display:none">
+                    <option value="">Все Подтипы</option>
+                </select>
+                <select class="filter-select" id="f3-${idx}" onchange="updateFilters(${idx}, 3)" style="display:none">
+                    <option value="">Все Платы</option>
+                </select>
+                <span class="discovery-count" id="count-${idx}"></span>
+            `;
+
+            // Populate Level 1
+            const parts1 = new Set(archList.map(a => a.split('_')[0]));
+            const s1 = document.getElementById(`f1-${idx}`);
+            Array.from(parts1).sort().forEach(p => s1.add(new Option(p, p)));
+
+            // Store archList on the DOM element for easy access
+            container.dataset.archs = JSON.stringify(archList);
+            
+            // Trigger update to set initial state (counts etc)
+            updateFilters(idx, 0);
+        }
+
+        function updateFilters(idx, changedLevel) {
+            const container = document.getElementById(`filters-${idx}`);
+            const archList = JSON.parse(container.dataset.archs);
+            
+            const s1 = document.getElementById(`f1-${idx}`);
+            const s2 = document.getElementById(`f2-${idx}`);
+            const s3 = document.getElementById(`f3-${idx}`);
+            
+            const v1 = s1.value;
+            const v2 = s2.value;
+            const v3 = s3.value;
+
+            // If Level 1 changed, rebuild Level 2
+            if (changedLevel <= 1) {
+                s2.innerHTML = '<option value="">Все Подтипы</option>';
+                s2.style.display = 'none';
+                s3.innerHTML = '<option value="">Все Платы</option>';
+                s3.style.display = 'none';
+
+                if (v1) {
+                    const parts2 = new Set();
+                    archList.forEach(a => {
+                        const p = a.split('_');
+                        if (p[0] === v1 && p.length > 1) parts2.add(p[1]);
+                    });
+                    
+                    if (parts2.size > 0) {
+                        Array.from(parts2).sort().forEach(p => s2.add(new Option(p, p)));
+                        s2.style.display = 'block';
+                    }
+                }
+            }
+
+            // If Level 2 changed (or Level 1 cascading), rebuild Level 3
+            if (changedLevel <= 2) {
+                s3.innerHTML = '<option value="">Все Платы</option>';
+                s3.style.display = 'none';
+                
+                if (v1 && s2.value) { // Use current s2 value
+                    const curV2 = s2.value;
+                    const parts3 = new Set();
+                    archList.forEach(a => {
+                        const p = a.split('_');
+                        if (p[0] === v1 && p[1] === curV2 && p.length > 2) {
+                             // Join the rest as Level 3
+                             parts3.add(p.slice(2).join('_'));
+                        }
+                    });
+
+                    if (parts3.size > 0) {
+                        Array.from(parts3).sort().forEach(p => s3.add(new Option(p, p)));
+                        s3.style.display = 'block';
+                    }
+                }
+            }
+
+            // Apply filtering
+            filterRepoAssets(idx);
+        }
+
+        function filterRepoAssets(idx) {
+            const s1 = document.getElementById(`f1-${idx}`).value;
+            const s2 = document.getElementById(`f2-${idx}`).value;
+            const s3 = document.getElementById(`f3-${idx}`).value;
+            
+            // Construct search prefix
+            // e.g. "mips64" or "mips64_mips64r2"
+            let prefix = s1;
+            if (prefix && s2) prefix += '_' + s2;
+            if (prefix && s3) prefix += '_' + s3;
+
+            const items = document.querySelectorAll(`#assets-${idx} .asset-item`);
+            let count = 0;
+            
+            items.forEach(item => {
+                const arch = item.getAttribute('data-arch');
+                // Logic: does the asset's arch START with the selected prefix?
+                // Example: Selected "mips64", Asset "mips64_generic" -> Match
+                if (!prefix || arch === prefix || arch.startsWith(prefix + '_')) {
+                    item.style.display = 'flex';
+                    count++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            document.getElementById(`count-${idx}`).textContent = `Файлов: ${count}`;
+        }
+
+        function applyDiscovery() {
+            // Collect checked items to determine filter
+            const checkboxes = document.querySelectorAll('#discovery-results input[type="checkbox"]');
+            const repoChoices = {}; // repoName -> { arch: string }
+            
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    const repo = cb.getAttribute('data-repo');
+                    // Get arch from the parent label's data-arch attribute
+                    const arch = cb.closest('.asset-item').getAttribute('data-arch');
+                    
+                    if (!repoChoices[repo]) {
+                         repoChoices[repo] = { arch: arch };
+                    }
+                    // Currently we just take the first one selected. 
+                    // Ideally we might check for consistency, but simplicity first.
+                }
+            });
+
+            // Update Config
+            let changed = false;
+            currentConfig = currentConfig.map(repo => {
+                const wasScanned = discoveredData.find(d => d.name === repo.name && !d.error);
+                
+                if (wasScanned) {
+                    const choice = repoChoices[repo.name];
+                    
+                    // Always clear legacy selected_assets
+                    delete repo.selected_assets;
+                    
+                    if (choice) {
+                         // Set filter to the chosen architecture
+                         repo.filter_arch = choice.arch;
+                    } 
+                    // If nothing selected, we might want to default to 'all' or keep existing?
+                    // Let's not change filter_arch if nothing selected, just update tag.
+                    
+                    repo.last_tag = wasScanned.tag; 
+                    changed = true;
+                }
+                return repo;
+            });
+
+            document.getElementById('config-editor').value = JSON.stringify(currentConfig, null, 2);
+            closeDiscovery();
+            saveConfig(); // Auto save
+            setTimeout(loadConfig, 500); // Reload views to reflect changes
+            alert("Фильтр архитектур обновлен! Пакеты 'all'/'noarch' будут включены автоматически.");
+        }
+
+        // Helper
+        function copyCode(btn) {
+            const text = btn.nextElementSibling.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                 const orig = btn.innerText; btn.innerText = 'Copied!';
+                 setTimeout(() => btn.innerText = orig, 2000);
+            });
+        }
+        async function runUpdate() {
+            if(!confirm("Запустить обновление?")) return;
+            fetch('/api/update', { method: 'POST' });
+            alert("Запущено.");
+            refreshLog();
+        }
         async function refreshLog() {
             if (!document.getElementById('manager').classList.contains('active')) return;
             try {
                 const res = await fetch('/api/log');
-                const text = await res.text();
-                const view = document.getElementById('log-view');
-                view.textContent = text;
-                view.scrollTop = view.scrollHeight;
+                document.getElementById('log-view').textContent = await res.text();
             } catch(e) {}
         }
-        
-        setInterval(refreshLog, 5000); // Auto-refresh log
+        setInterval(refreshLog, 5000);
     </script>
 </body>
 </html>
