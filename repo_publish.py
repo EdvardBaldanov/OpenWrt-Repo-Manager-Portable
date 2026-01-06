@@ -7,23 +7,18 @@ import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
+import crypto_utils
+import opkg_make_index
 
-# Portable path helper
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        return Path(sys._MEIPASS)
-    return Path(__file__).resolve().parent
+import paths
 
 # Константы
-SCRIPT_DIR = get_base_path()
-REPO_SOURCES = SCRIPT_DIR / "repo_sources.json"
-REPO_ROOT = Path("/var/www/openwrt_repo")
-SECRET_KEY = SCRIPT_DIR / "secret.key"
-LOG_FILE = SCRIPT_DIR / "update.log"
+REPO_SOURCES = paths.SOURCES_JSON
+REPO_ROOT = paths.REPO_STORAGE_DIR
+SECRET_KEY = paths.KEYS_DIR / "secret.key"
+LOG_FILE = paths.LOG_FILE
 
 # Пути к портативным утилитам
-USIGN = SCRIPT_DIR / "bin" / "usign"
-OPKG_INDEX = SCRIPT_DIR / "bin" / "opkg-make-index"
 
 def log(message):
     """Логирование в файл и stdout."""
@@ -75,12 +70,6 @@ def main():
     if not REPO_SOURCES.exists():
         log(f"❌ [PUB] Ошибка: Источники {REPO_SOURCES} не найдены.")
         sys.exit(1)
-
-    # Убеждаемся, что утилиты исполняемые
-    for util in [USIGN, OPKG_INDEX]:
-        if util.exists() and not os.access(util, os.X_OK):
-            os.chmod(util, 0o755)
-
     try:
         with open(REPO_SOURCES, "r", encoding="utf-8") as f:
             sources = json.load(f)
@@ -107,28 +96,24 @@ def main():
         packages_gz_file = target_dir / "Packages.gz"
         index_json_file = target_dir / "index.json"
 
-        # 1. Создание Packages с помощью opkg-make-index
+        # 1. Создание Packages с помощью прямого вызова Python функции
         try:
-            # Запускаем opkg-make-index в target_dir
-            with open(packages_file, "w") as outfile:
-                subprocess.run(
-                    [str(OPKG_INDEX), "."], 
-                    cwd=target_dir, 
-                    stdout=outfile, 
-                    check=True,
-                    stderr=subprocess.PIPE
-                )
-        except subprocess.CalledProcessError as e:
-            log(f"   ❌ Ошибка при создании Packages для {arch}: {e.stderr.decode('utf-8') if e.stderr else 'Unknown error'}")
+            log(f"   ⚙️  Генерация индекса для {arch}...")
+            opkg_make_index.make_index(
+                pkg_dir=str(target_dir),
+                packages_filename=str(packages_file)
+            )
+        except Exception as e:
+            log(f"   ❌ Ошибка при создании Packages для {arch}: {e}")
             continue
 
         # 2. Подпись
         if SECRET_KEY.exists():
             try:
-                subprocess.run([str(USIGN), "-S", "-m", str(packages_file), 
-                    "-s", str(SECRET_KEY), "-c", "Custom Repo"], check=True, cwd=target_dir, stderr=subprocess.PIPE)
-            except subprocess.CalledProcessError as e:
-                log(f"   ❌ Ошибка подписи для {arch}: {e.stderr.decode('utf-8') if e.stderr else 'Unknown error'}")
+                log(f"   ✍️  Подпись индекса {packages_file}...")
+                crypto_utils.sign_file(str(packages_file), str(SECRET_KEY))
+            except Exception as e:
+                log(f"   ❌ Ошибка подписи для {arch}: {e}")
         else:
             log("   ⚠️  [PUB] Секретный ключ не найден, индекс не подписан!")
 

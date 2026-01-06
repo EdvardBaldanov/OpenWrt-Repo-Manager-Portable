@@ -4,12 +4,15 @@ import sys
 import subprocess
 import shutil
 from pathlib import Path
+import crypto_utils
+
+import paths
 
 # Константы
-REPO_ROOT = Path("/var/www/openwrt_repo")
+REPO_ROOT = paths.REPO_STORAGE_DIR
 NGINX_CONF_DEST = Path("/etc/nginx/sites-available/openwrt_repo")
 NGINX_ENABLED_LINK = Path("/etc/nginx/sites-enabled/openwrt_repo")
-SCRIPT_DIR = Path(__file__).resolve().parent
+SCRIPT_DIR = paths.BASE_DIR
 VENV_DIR = SCRIPT_DIR / "venv"
 VENV_PYTHON = VENV_DIR / "bin" / "python"
 USER_NAME = os.environ.get('USER') or os.getlogin()
@@ -40,10 +43,6 @@ def setup_venv():
     run_command(f"{venv_pip} install {' '.join(requirements)}", shell=True)
 
 def main():
-    print("🛠 Настройка прав для локальных утилит в bin/...")
-    bin_dir = SCRIPT_DIR / "bin"
-    if bin_dir.exists():
-        run_command(f"chmod +x {bin_dir}/*", shell=True)
     
     print("🛠 Установка системных зависимостей...")
     # Убираем python3-pip и python3-flask из системных, добавляем python3-venv
@@ -86,8 +85,12 @@ def main():
     
     if not secret_key.exists():
         print("🔑 Генерируем ключи подписи...")
-        usign_bin = SCRIPT_DIR / "bin" / "usign"
-        run_command(f"{usign_bin} -G -s {secret_key} -p {public_key}", shell=True)
+        # Убираем расширение .key для функции, так как она сама его добавит
+        key_base = str(SCRIPT_DIR / "secret")
+        crypto_utils.generate_keypair(key_base, "OpenWrt Repo")
+        # crypto_utils создаст secret.key и secret.pub
+        # Убеждаемся, что public.key скопирован
+        shutil.copy(SCRIPT_DIR / "secret.pub", public_key)
         shutil.copy(public_key, REPO_ROOT / "public.key")
 
     # Настройка службы Dashboard (Systemd)

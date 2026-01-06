@@ -5,16 +5,11 @@ import json
 import re
 from github import Github, GithubException
 
-# Portable path helper
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        return sys._MEIPASS
-    return os.path.dirname(os.path.abspath(__file__))
+import paths
 
-BASE_DIR = get_base_path()
-CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
-SOURCES_FILE = os.path.join(BASE_DIR, 'repo_sources.json')
-TRACKING_FILE = os.path.join(BASE_DIR, 'repo_tracking.list')
+CONFIG_FILE = paths.CONFIG_JSON
+SOURCES_FILE = paths.SOURCES_JSON
+TRACKING_FILE = paths.TRACKING_LIST
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
