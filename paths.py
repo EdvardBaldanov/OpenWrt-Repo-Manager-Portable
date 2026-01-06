@@ -1,6 +1,8 @@
 import os
 import sys
+import shutil
 from pathlib import Path
+import crypto_utils
 
 def get_internal_dir():
     """Путь к ресурсам внутри бинарника (PyInstaller)."""
@@ -34,3 +36,15 @@ def ensure_folders():
     # Также создаем пустой лог, если его нет
     if not LOG_FILE.exists():
         LOG_FILE.touch()
+
+    # Генерация ключей, если их нет
+    secret_key = KEYS_DIR / "secret.key"
+    public_key = KEYS_DIR / "public.key"
+    if not secret_key.exists():
+        print("🔑 Генерируем ключи подписи...")
+        # crypto_utils.generate_keypair создаст secret.key и secret.pub
+        key_base = str(KEYS_DIR / "secret")
+        crypto_utils.generate_keypair(key_base, "OpenWrt Repo")
+        # Копируем .pub в .key для совместимости, если нужно, 
+        # но в системе мы используем public.key
+        shutil.copy(str(KEYS_DIR / "secret.pub"), str(public_key))
