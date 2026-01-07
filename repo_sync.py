@@ -10,7 +10,7 @@ from pathlib import Path
 import urllib.request
 import urllib.error
 
-import paths
+from logger_utils import logger
 
 # Константы
 REPO_SOURCES = paths.SOURCES_JSON
@@ -19,15 +19,8 @@ LOG_FILE = paths.LOG_FILE
 TMP_DIR = paths.BASE_DIR / ".tmp_repo"
 
 def log(message):
-    """Логирование в файл и stdout."""
-    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    full_message = f"{timestamp} {message}"
-    print(full_message)
-    try:
-        with open(LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(full_message + "\n")
-    except Exception as e:
-        print(f"Ошибка записи в лог: {e}")
+    """Логирование через центральный логгер."""
+    logger.info(message)
 
 def download_file(url, dest_path):
     """Скачивание файла по URL."""

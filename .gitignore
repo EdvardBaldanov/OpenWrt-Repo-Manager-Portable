@@ -10,3 +10,7 @@ www/
 .tmp_repo/
 *.sig
 *.stamps
+dashboard.dist
+dashboard.build
+dashboard.onefile-build
+openwrt-repo-manager

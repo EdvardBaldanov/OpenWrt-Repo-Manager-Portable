@@ -37,14 +37,23 @@ def ensure_folders():
     if not LOG_FILE.exists():
         LOG_FILE.touch()
 
-    # Генерация ключей, если их нет
+    # Генерация ключей, только если их НЕТ
     secret_key = KEYS_DIR / "secret.key"
     public_key = KEYS_DIR / "public.key"
+    
     if not secret_key.exists():
-        print("🔑 Генерируем ключи подписи...")
-        # crypto_utils.generate_keypair создаст secret.key и secret.pub
+        print("🔑 Секретный ключ не найден. Генерируем новую пару ключей...")
         key_base = str(KEYS_DIR / "secret")
         crypto_utils.generate_keypair(key_base, "OpenWrt Repo")
-        # Копируем .pub в .key для совместимости, если нужно, 
-        # но в системе мы используем public.key
-        shutil.copy(str(KEYS_DIR / "secret.pub"), str(public_key))
+        
+        # Копируем созданный .pub в public.key для использования в системе
+        generated_pub = KEYS_DIR / "secret.pub"
+        if generated_pub.exists() and not public_key.exists():
+            shutil.copy(str(generated_pub), str(public_key))
+    else:
+        # Если секретный ключ есть, но публичный пропал - пытаемся восстановить из .pub
+        if not public_key.exists():
+            generated_pub = KEYS_DIR / "secret.pub"
+            if generated_pub.exists():
+                shutil.copy(str(generated_pub), str(public_key))
+                print("📋 Публичный ключ восстановлен из secret.pub")

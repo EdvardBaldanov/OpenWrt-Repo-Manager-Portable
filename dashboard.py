@@ -10,6 +10,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import paths
 import repo_discovery
 import repo_update
+from logger_utils import logger
 
 UPDATE_SCRIPT = os.path.join(paths.INTERNAL_DIR, 'repo_update.py')
 
@@ -19,6 +20,11 @@ app = Flask(__name__, template_folder=str(paths.INTERNAL_DIR / 'templates'))
 def serve_index():
     """Раздает основной файл интерфейса."""
     return render_template('index.html')
+
+@app.route('/health')
+def health():
+    """Эндпоинт для проверки работоспособности."""
+    return jsonify({"status": "ok"})
 
 @app.route('/repo/<path:filename>')
 def serve_repo(filename):
@@ -114,10 +120,10 @@ def settings():
                 f.flush()
                 os.fsync(f.fileno())
             
-            print(f"DEBUG: Config saved to {paths.CONFIG_JSON}")
+            logger.info(f"DEBUG: Config saved to {paths.CONFIG_JSON}")
             return jsonify({"status": "saved"})
         except Exception as e:
-            print(f"ERROR: Failed to save settings: {e}")
+            logger.error(f"ERROR: Failed to save settings: {e}")
             return jsonify({"error": str(e)}), 500
 
 @app.route('/api/discover', methods=['GET'])
@@ -185,9 +191,9 @@ WantedBy=multi-user.target
         subprocess.run(["systemctl", "daemon-reload"], check=True)
         subprocess.run(["systemctl", "enable", "repo-dashboard"], check=True)
         subprocess.run(["systemctl", "restart", "repo-dashboard"], check=True)
-        print("✅ Служба repo-dashboard успешно установлена и запущена.")
+        logger.info("✅ Служба repo-dashboard успешно установлена и запущена.")
     except Exception as e:
-        print(f"❌ Ошибка при установке службы: {e}")
+        logger.error(f"❌ Ошибка при установке службы: {e}")
         sys.exit(1)
 
 def uninstall_service():
@@ -203,9 +209,9 @@ def uninstall_service():
         if os.path.exists(service_path):
             os.remove(service_path)
         subprocess.run(["systemctl", "daemon-reload"], check=True)
-        print("✅ Служба repo-dashboard удалена.")
+        logger.info("✅ Служба repo-dashboard удалена.")
     except Exception as e:
-        print(f"❌ Ошибка при удалении службы: {e}")
+        logger.error(f"❌ Ошибка при удалении службы: {e}")
         sys.exit(1)
 
 def start_scheduler():
@@ -213,7 +219,7 @@ def start_scheduler():
     scheduler = BackgroundScheduler()
     scheduler.add_job(repo_update.run_all, 'interval', hours=6, id='repo_update_job')
     scheduler.start()
-    print("⏰ Внутренний планировщик запущен (период: 6 часов).")
+    logger.info("⏰ Внутренний планировщик запущен (период: 6 часов).")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='OpenWrt Repo Manager Dashboard')
@@ -232,6 +238,6 @@ if __name__ == '__main__':
     paths.ensure_folders()
     start_scheduler()
     
-    print(f"🚀 Запуск Waitress на http://0.0.0.0:8080")
-    print(f"📍 Базовая директория: {paths.BASE_DIR}")
+    logger.info(f"🚀 Запуск Waitress на http://0.0.0.0:8080")
+    logger.info(f"📍 Базовая директория: {paths.BASE_DIR}")
     waitress.serve(app, host='0.0.0.0', port=8080)
