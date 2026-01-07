@@ -164,13 +164,16 @@ def install_service():
     service_path = "/etc/systemd/system/repo-dashboard.service"
     
     # Определяем путь для ExecStart
-    if getattr(sys, 'frozen', False):
-        # В режиме бинарника запускаем сам бинарник напрямую
-        exec_start = str(paths.BINARY_PATH)
-    else:
-        # В режиме скрипта запускаем через текущий интерпретатор
+    real_path = paths.BINARY_PATH
+    
+    # Logic: If the resolved path ends in .py, treat as script. Otherwise, treat as binary.
+    if str(real_path).lower().endswith('.py'):
+        # Script mode
         script_path = os.path.abspath(sys.argv[0])
         exec_start = f"{sys.executable} {script_path}"
+    else:
+        # Binary mode
+        exec_start = str(real_path)
     
     formatted_path = str(paths.BINARY_PATH)
     logger.info(f"🛠️ Path resolution result: {formatted_path}")
