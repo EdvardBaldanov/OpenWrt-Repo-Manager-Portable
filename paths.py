@@ -15,21 +15,29 @@ def get_internal_dir():
 def get_executable_path():
     """Возвращает путь к реальному исполняемому файлу (даже для onefile)."""
     if getattr(sys, 'frozen', False):
-        # 1. Сначала проверяем переменные окружения Nuitka
+        # В режиме Nuitka onefile:
+        # sys.executable -> указывает на распакованный бинарник в /tmp/...
+        # sys.argv[0]    -> указывает на оригинальный исполняемый файл (который запустил юзер)
+        
+        # 1. Проверяем переменные окружения (на всякий случай)
         for var in ["NUITKA_ONEFILE_BINARY", "NUITKA_BINARY_NAME"]:
             val = os.environ.get(var)
             if val and os.path.exists(val):
                 return Path(val).resolve()
         
-        # 2. Если переменных нет, пробуем sys.argv[0], 
-        # но только если он не указывает в /tmp
+        # 2. Используем sys.argv[0], так как это самый надежный способ получить путь к оригиналу
         if sys.argv and sys.argv[0]:
             arg0 = Path(sys.argv[0]).resolve()
-            if arg0.exists() and "/tmp/" not in str(arg0):
+            # Проверяем, что файл существует.
+            # Убираем проверку на /tmp/, так как юзер может реально запускать из /tmp, 
+            # и это не должно ломать логику определения пути.
+            if arg0.exists():
                 return arg0
             
-        # 3. Последний шанс - sys.executable
+        # 3. Fallback: возвращаем sys.executable, если ничего не нашли
         return Path(sys.executable).resolve()
+    
+    # В режиме интерпретатора (python script.py)
     return Path(sys.argv[0]).resolve()
 
 def get_base_dir():
