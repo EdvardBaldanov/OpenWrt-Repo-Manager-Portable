@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*' # Срабатывает при пуше тегов, начинающихся с 'v' (например, v1.0.0)
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
