@@ -10,29 +10,17 @@ from pathlib import Path
 import urllib.request
 import urllib.error
 
-# Portable path helper
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        return Path(sys._MEIPASS)
-    return Path(__file__).resolve().parent
+from logger_utils import logger
 
 # Константы
-SCRIPT_DIR = get_base_path()
-REPO_SOURCES = SCRIPT_DIR / "repo_sources.json"
-REPO_ROOT = Path("/var/www/openwrt_repo")
-TMP_DIR = Path("/tmp/repo_update")
-LOG_FILE = SCRIPT_DIR / "update.log"
+REPO_SOURCES = paths.SOURCES_JSON
+REPO_ROOT = paths.REPO_STORAGE_DIR
+LOG_FILE = paths.LOG_FILE
+TMP_DIR = paths.BASE_DIR / ".tmp_repo"
 
 def log(message):
-    """Логирование в файл и stdout."""
-    timestamp = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
-    full_message = f"{timestamp} {message}"
-    print(full_message)
-    try:
-        with open(LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(full_message + "\n")
-    except Exception as e:
-        print(f"Ошибка записи в лог: {e}")
+    """Логирование через центральный логгер."""
+    logger.info(message)
 
 def download_file(url, dest_path):
     """Скачивание файла по URL."""
