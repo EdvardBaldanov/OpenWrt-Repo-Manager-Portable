@@ -23,7 +23,23 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y patchelf build-essential
+          sudo apt-get install -y patchelf build-essential ccache
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache Nuitka (ccache)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ${{ runner.os }}-ccache-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
 
       - name: Install Python Dependencies
         run: |
@@ -32,6 +48,7 @@ jobs:
 
       - name: Build Standalone Binary with Nuitka
         run: |
+          export CCACHE_DIR=$HOME/.cache/ccache
           python -m nuitka --standalone --onefile \
             --include-data-dir=templates=templates \
             --follow-imports \
