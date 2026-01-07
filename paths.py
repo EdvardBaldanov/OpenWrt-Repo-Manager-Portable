@@ -46,6 +46,11 @@ def ensure_folders():
             with open(TRACKING_LIST, 'w', encoding='utf-8') as f:
                 f.write("# Список репозиториев (owner/repo)\n# openwrt-ota/RamoS-OTA\n")
 
+    # Создаем пустой конфиг, если его нет
+    if not CONFIG_JSON.exists():
+        with open(CONFIG_JSON, 'w', encoding='utf-8') as f:
+            f.write("{}\n")
+
     # Генерация ключей, только если их НЕТ
     secret_key = KEYS_DIR / "secret.key"
     public_key = KEYS_DIR / "public.key"
