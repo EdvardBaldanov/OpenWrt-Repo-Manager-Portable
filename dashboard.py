@@ -172,6 +172,8 @@ def install_service():
         script_path = os.path.abspath(sys.argv[0])
         exec_start = f"{sys.executable} {script_path}"
     
+    formatted_path = str(paths.BINARY_PATH)
+    logger.info(f"🛠️ Path resolution result: {formatted_path}")
     logger.info(f"🛠️ Установка службы: ExecStart={exec_start}, WorkingDir={paths.BASE_DIR}")
     
     content = f"""[Unit]

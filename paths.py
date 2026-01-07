@@ -14,30 +14,48 @@ def get_internal_dir():
 
 def get_executable_path():
     """Возвращает путь к реальному исполняемому файлу (даже для onefile)."""
-    if getattr(sys, 'frozen', False):
-        # В режиме Nuitka onefile:
-        # sys.executable -> указывает на распакованный бинарник в /tmp/...
-        # sys.argv[0]    -> указывает на оригинальный исполняемый файл (который запустил юзер)
-        
-        # 1. Проверяем переменные окружения (на всякий случай)
-        for var in ["NUITKA_ONEFILE_BINARY", "NUITKA_BINARY_NAME"]:
-            val = os.environ.get(var)
-            if val and os.path.exists(val):
-                return Path(val).resolve()
-        
-        # 2. Используем sys.argv[0], так как это самый надежный способ получить путь к оригиналу
-        if sys.argv and sys.argv[0]:
-            arg0 = Path(sys.argv[0]).resolve()
-            # Проверяем, что файл существует.
-            # Убираем проверку на /tmp/, так как юзер может реально запускать из /tmp, 
-            # и это не должно ломать логику определения пути.
-            if arg0.exists():
-                return arg0
-            
-        # 3. Fallback: возвращаем sys.executable, если ничего не нашли
-        return Path(sys.executable).resolve()
-    
-    # В режиме интерпретатора (python script.py)
+    candidate_log = []
+
+    # Strategy 1: Nuitka Environment Variable (Official way)
+    for env_var in ["NUITKA_ONEFILE_BINARY", "NUITKA_BINARY_NAME"]:
+        val = os.environ.get(env_var)
+        if val:
+            path = Path(val).resolve()
+            if path.exists():
+                print(f"DEBUG: Found binary via {env_var}: {path}")
+                return path
+
+    # Strategy 2: sys.argv[0] (Standard way, check if not in tmp)
+    if sys.argv and sys.argv[0]:
+        arg0 = Path(sys.argv[0]).resolve()
+        # If it looks like a real path (not in /tmp/onefile_...), assume it's the one
+        if arg0.exists() and "/tmp/onefile_" not in str(arg0):
+             print(f"DEBUG: Found binary via sys.argv[0]: {arg0}")
+             return arg0
+        candidate_log.append(f"sys.argv[0]={arg0}")
+
+    # Strategy 3: Parent Process Inspection (Linux specific)
+    # In some Nuitka builds, the running process is a child of the bootstrap binary.
+    if sys.platform.startswith("linux"):
+        try:
+            ppid = os.getppid()
+            ppid_path = Path(os.readlink(f"/proc/{ppid}/exe")).resolve()
+            # If parent is NOT python and NOT in tmp, it's likely our wrapper
+            if ppid_path.exists() and "/tmp/" not in str(ppid_path) and "python" not in ppid_path.name.lower():
+                print(f"DEBUG: Found binary via parent process ({ppid}): {ppid_path}")
+                return ppid_path
+            candidate_log.append(f"ppid({ppid})={ppid_path}")
+        except Exception as e:
+            candidate_log.append(f"ppid_check_error={e}")
+
+    # Strategy 4: CWD Fallback (Common case: ./openwrt-repo-manager)
+    cwd_bin = Path(os.getcwd()) / "openwrt-repo-manager"
+    if cwd_bin.exists():
+        print(f"DEBUG: Found binary via CWD check: {cwd_bin}")
+        return cwd_bin
+
+    # Strategy 5: Fallback to whatever argv[0] is, even if temp (better than crashing)
+    print(f"WARNING: Could not determine permanent path. Candidates: {candidate_log}")
     return Path(sys.argv[0]).resolve()
 
 def get_base_dir():
