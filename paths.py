@@ -37,6 +37,15 @@ def ensure_folders():
     if not LOG_FILE.exists():
         LOG_FILE.touch()
 
+    # Создаем дефолтный список отслеживания, если его нет
+    if not TRACKING_LIST.exists():
+        example_path = BASE_DIR / "repo_tracking.list.example"
+        if example_path.exists():
+            shutil.copy(str(example_path), str(TRACKING_LIST))
+        else:
+            with open(TRACKING_LIST, 'w', encoding='utf-8') as f:
+                f.write("# Список репозиториев (owner/repo)\n# openwrt-ota/RamoS-OTA\n")
+
     # Генерация ключей, только если их НЕТ
     secret_key = KEYS_DIR / "secret.key"
     public_key = KEYS_DIR / "public.key"

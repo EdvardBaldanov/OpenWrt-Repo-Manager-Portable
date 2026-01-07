@@ -14,3 +14,6 @@ dashboard.dist
 dashboard.build
 dashboard.onefile-build
 openwrt-repo-manager
+repo_tracking.list
+repo_sources.json
+config.json

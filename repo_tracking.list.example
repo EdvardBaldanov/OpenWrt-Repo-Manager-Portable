@@ -1,0 +1,6 @@
+# Список репозиториев для отслеживания (один на строку)
+# Формат: owner/repository
+# Примеры:
+openwrt-ota/RamoS-OTA
+immich-app/immich
+# EdvardBaldanov/OpenWrt-ipk-Repo-Manager-Portable
