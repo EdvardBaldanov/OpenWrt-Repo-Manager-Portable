@@ -5,19 +5,30 @@ from pathlib import Path
 import crypto_utils
 
 def get_internal_dir():
-    """Путь к ресурсам внутри бинарника (PyInstaller)."""
+    """Путь к ресурсам внутри бинарника (PyInstaller/Nuitka)."""
     if getattr(sys, 'frozen', False):
-        return Path(sys._MEIPASS)
-    return Path(__file__).resolve().parent
-
-def get_base_dir():
-    """Путь к папке, где лежит исполняемый файл или сам скрипт."""
-    if getattr(sys, 'frozen', False):
-        # В режиме бинарника BASE_DIR - это папка с .exe/elf
+        # В Nuitka sys.executable - это путь к распакованному файлу в /tmp
+        # А INTERNAL_DIR - это корень распакованных файлов
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent
 
+def get_executable_path():
+    """Возвращает путь к реальному исполняемому файлу (даже для onefile)."""
+    if getattr(sys, 'frozen', False):
+        # Для Nuitka onefile оригинальный путь лежит в NUITKA_BINARY_NAME
+        nuitka_orig = os.environ.get('NUITKA_BINARY_NAME')
+        if nuitka_orig:
+            return Path(nuitka_orig).resolve()
+        # Fallback на sys.argv[0] или sys.executable
+        return Path(sys.executable).resolve()
+    return Path(sys.argv[0]).resolve()
+
+def get_base_dir():
+    """Путь к папке, где лежит оригинальный бинарник или скрипт."""
+    return get_executable_path().parent
+
 INTERNAL_DIR = get_internal_dir()
+BINARY_PATH = get_executable_path()
 BASE_DIR = get_base_dir()
 
 # Константы путей

@@ -163,9 +163,14 @@ def install_service():
     user = os.environ.get('USER') or 'root'
     service_path = "/etc/systemd/system/repo-dashboard.service"
     
-    # Определяем путь к скрипту и интерпретатору
-    script_path = os.path.abspath(sys.argv[0])
-    exec_start = f"{sys.executable} {script_path}"
+    # Определяем путь запуска
+    if getattr(sys, 'frozen', False):
+        # В режиме бинарника запускаем сам бинарник напрямую
+        exec_start = str(paths.BINARY_PATH)
+    else:
+        # В режиме скрипта запускаем через текущий интерпретатор
+        script_path = os.path.abspath(sys.argv[0])
+        exec_start = f"{sys.executable} {script_path}"
     
     content = f"""[Unit]
 Description=OpenWrt Repo Manager Dashboard
