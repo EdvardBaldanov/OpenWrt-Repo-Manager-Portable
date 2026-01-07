@@ -50,6 +50,7 @@ jobs:
         run: |
           export CCACHE_DIR=$HOME/.cache/ccache
           python -m nuitka --standalone --onefile \
+            --include-package=nacl \
             --include-data-dir=templates=templates \
             --follow-imports \
             --output-filename=openwrt-repo-manager \
