@@ -3,6 +3,7 @@ import sys
 import json
 import subprocess
 import argparse
+import threading
 from flask import Flask, request, jsonify, send_from_directory, render_template
 import waitress
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -11,8 +12,6 @@ import paths
 import repo_discovery
 import repo_update
 from logger_utils import logger
-
-UPDATE_SCRIPT = os.path.join(paths.INTERNAL_DIR, 'repo_update.py')
 
 app = Flask(__name__, template_folder=str(paths.INTERNAL_DIR / 'templates'))
 
@@ -25,11 +24,6 @@ def serve_index():
 def health():
     """Эндпоинт для проверки работоспособности."""
     return jsonify({"status": "ok"})
-
-@app.route('/repo/<path:filename>')
-def serve_repo(filename):
-    """Раздает файлы репозитория pkg."""
-    return send_from_directory(str(paths.REPO_STORAGE_DIR), filename)
 
 @app.route('/api/tracking', methods=['GET'])
 def get_tracking():
@@ -140,9 +134,10 @@ def run_discovery():
 def trigger_update():
     """Запускает скрипт обновления в фоне."""
     try:
-        # Запускаем скрипт обновления
-        subprocess.Popen([sys.executable, UPDATE_SCRIPT], cwd=str(paths.BASE_DIR))
-        return jsonify({"status": "Update started"})
+        # Запускаем обновление в отдельном потоке
+        update_thread = threading.Thread(target=repo_update.run_all)
+        update_thread.start()
+        return jsonify({"status": "Update started (background thread)"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -158,6 +153,11 @@ def get_log():
     except Exception as e:
         return str(e)
 
+@app.route('/<path:filename>')
+def serve_repo(filename):
+    """Раздает файлы репозитория pkg напрямую из корня."""
+    return send_from_directory(str(paths.REPO_STORAGE_DIR), filename)
+
 def install_service():
     """Установка systemd службы."""
     user = os.environ.get('USER') or 'root'
@@ -168,11 +168,11 @@ def install_service():
     
     # Logic: If the resolved path ends in .py, treat as script. Otherwise, treat as binary.
     if str(real_path).lower().endswith('.py'):
-        # Script mode
+        # Script mode: be careful with sys.executable in venv vs system
         script_path = os.path.abspath(sys.argv[0])
         exec_start = f"{sys.executable} {script_path}"
     else:
-        # Binary mode
+        # Binary mode (Nuitka onefile)
         exec_start = str(real_path)
     
     formatted_path = str(paths.BINARY_PATH)

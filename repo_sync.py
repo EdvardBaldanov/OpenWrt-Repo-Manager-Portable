@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import urllib.request
 import urllib.error
+import paths
 
 from logger_utils import logger
 
@@ -56,7 +57,7 @@ def get_json(url):
         log(f"   ❌ Ошибка доступа к API {url}: {e}")
         return None
 
-def main():
+def run():
     log("🚀 [SYNC] Запуск синхронизации пакетов...")
     
     if not TMP_DIR.exists():
@@ -64,14 +65,14 @@ def main():
         
     if not REPO_SOURCES.exists():
         log(f"❌ [SYNC] Ошибка: Источники {REPO_SOURCES} не найдены.")
-        sys.exit(1)
+        return False
 
     try:
         with open(REPO_SOURCES, "r", encoding="utf-8") as f:
             sources = json.load(f)
     except json.JSONDecodeError as e:
         log(f"❌ [SYNC] Ошибка парсинга {REPO_SOURCES}: {e}")
-        sys.exit(1)
+        return False
 
     updates_found = False
     has_network_errors = False
@@ -244,10 +245,10 @@ def main():
 
     if updates_found:
         log("✅ [SYNC] Синхронизация завершена. Есть новые пакеты.")
-        sys.exit(0)
+        return True
     else:
         log("💤 [SYNC] Нет новых пакетов.")
-        sys.exit(0)
+        return True
 
 if __name__ == "__main__":
-    main()
+    run()

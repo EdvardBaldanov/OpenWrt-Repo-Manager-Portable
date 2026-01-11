@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 import crypto_utils
 import opkg_make_index
+import paths
 
 from logger_utils import logger
 
@@ -57,18 +58,18 @@ def parse_packages_file(file_path):
     
     return packages
 
-def main():
+def run():
     log("🏗️  [PUB] Запуск публикации репозитория...")
     
     if not REPO_SOURCES.exists():
         log(f"❌ [PUB] Ошибка: Источники {REPO_SOURCES} не найдены.")
-        sys.exit(1)
+        return False
     try:
         with open(REPO_SOURCES, "r", encoding="utf-8") as f:
             sources = json.load(f)
     except json.JSONDecodeError as e:
         log(f"❌ [PUB] Ошибка парсинга {REPO_SOURCES}: {e}")
-        sys.exit(1)
+        return False
 
     # Получаем уникальные архитектуры
     archs = set()
@@ -136,11 +137,13 @@ def main():
         log(f"   ✨ [PUB] Индексы {arch} готовы.")
 
     # Обновление публичных файлов
-    public_key = SCRIPT_DIR / "public.key"
+    # Публичный ключ берем оттуда же, где и секретный (BASE_DIR)
+    public_key = paths.KEYS_DIR / "public.key"
     if public_key.exists():
         shutil.copy(public_key, REPO_ROOT / "public.key")
     
-    index_html = SCRIPT_DIR / "index.html"
+    # index.html берем из шаблонов внутри бинарника
+    index_html = paths.INTERNAL_DIR / "templates" / "index.html"
     if index_html.exists():
         shutil.copy(index_html, REPO_ROOT / "index.html")
         
@@ -155,6 +158,8 @@ def main():
             f.write("--------------------------------------------------------\n")
     except:
         pass
+    
+    return True
 
 if __name__ == "__main__":
-    main()
+    run()

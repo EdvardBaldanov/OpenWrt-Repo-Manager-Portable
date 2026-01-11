@@ -27,15 +27,23 @@ def get_executable_path():
 
     # Strategy 2: sys.argv[0] (Standard way, check if not in tmp)
     if sys.argv and sys.argv[0]:
-        arg0 = Path(sys.argv[0]).resolve()
-        # If it looks like a real path (not in /tmp/onefile_...), assume it's the one
-        if arg0.exists() and "/tmp/onefile_" not in str(arg0):
-             print(f"DEBUG: Found binary via sys.argv[0]: {arg0}")
-             return arg0
-        candidate_log.append(f"sys.argv[0]={arg0}")
+        try:
+            arg0_str = sys.argv[0]
+            # Handle relative paths like "./dashboard.bin"
+            if not os.path.isabs(arg0_str):
+                arg0_str = os.path.abspath(arg0_str)
+            
+            arg0 = Path(arg0_str).resolve()
+            
+            # If it looks like a real path (not in /tmp/onefile_...), assume it's the one
+            if arg0.exists() and "/tmp/onefile_" not in str(arg0) and "/tmp/_MEI" not in str(arg0):
+                 print(f"DEBUG: Found binary via sys.argv[0]: {arg0}")
+                 return arg0
+            candidate_log.append(f"sys.argv[0]={arg0}")
+        except Exception as e:
+            candidate_log.append(f"sys.argv[0]_error={e}")
 
     # Strategy 3: Parent Process Inspection (Linux specific)
-    # In some Nuitka builds, the running process is a child of the bootstrap binary.
     if sys.platform.startswith("linux"):
         try:
             ppid = os.getppid()
@@ -48,15 +56,20 @@ def get_executable_path():
         except Exception as e:
             candidate_log.append(f"ppid_check_error={e}")
 
-    # Strategy 4: CWD Fallback (Common case: ./openwrt-repo-manager)
-    cwd_bin = Path(os.getcwd()) / "openwrt-repo-manager"
-    if cwd_bin.exists():
-        print(f"DEBUG: Found binary via CWD check: {cwd_bin}")
-        return cwd_bin
+    # Strategy 4: CWD Fallback (Common Names)
+    cwd = Path(os.getcwd())
+    for name in ["openwrt-repo-manager", "dashboard", "dashboard.bin", "dashboard.exe"]:
+        cwd_bin = cwd / name
+        if cwd_bin.exists() and cwd_bin.stat().st_mode & 0o111: # Check if executable
+            print(f"DEBUG: Found binary via CWD check: {cwd_bin}")
+            return cwd_bin
 
     # Strategy 5: Fallback to whatever argv[0] is, even if temp (better than crashing)
+    # But inform the user
+    final_path = Path(sys.argv[0]).resolve()
     print(f"WARNING: Could not determine permanent path. Candidates: {candidate_log}")
-    return Path(sys.argv[0]).resolve()
+    print(f"WARNING: Falling back to: {final_path}")
+    return final_path
 
 def get_base_dir():
     """Путь к папке, где лежит оригинальный бинарник или скрипт."""

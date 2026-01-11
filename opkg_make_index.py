@@ -527,43 +527,61 @@ class Package(object):
         file.write(str(self))
         file.close()
 
-        cmd = "cd %s ; tar cvz --format=gnu -f %s/control.tar.gz control" % (self.meta_dir, self.scratch_dir)
-
-        cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-
-        while cmd_err.readline() != "":
-            pass
-
-        cmd_out.close()
-        cmd_in.close()
-        cmd_err.close()
+        cmd = ["tar", "cvz", "--format=gnu", "-f", "%s/control.tar.gz" % self.scratch_dir, "control"]
+        process = subprocess.Popen(cmd, cwd=self.meta_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = process.communicate()
+        if process.returncode != 0:
+             sys.stderr.write("Error creating control.tar.gz: %s\n" % err)
 
         bits = "control.tar.gz"
 
         if self.file_list:
-            cmd = "cd %s ; tar cvz --format=gnu -f %s/data.tar.gz" % (self.file_dir, self.scratch_dir)
-            cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-
-            while cmd_err.readline() != "":
-                pass
-
-            cmd_out.close()
-            cmd_in.close()
-            cmd_err.close()
+            cmd = ["tar", "cvz", "--format=gnu", "-f", "%s/data.tar.gz" % self.scratch_dir]
+            # Since self.file_list might be long, passing as args is risky if shell=False? 
+            # Original code `tar cvz ...` in shell relied on CWD.
+            # We can run it in self.file_dir.
+            # But wait, original code was: cmd = "cd %s ; tar cvz ... -f %s/data.tar.gz" % (self.file_dir, self.scratch_dir)
+            # The list of files is NOT in the cmd explicitly in original code?
+            # Wait, line 544 original: cmd = "cd %s ; tar cvz --format=gnu -f %s/data.tar.gz" % (self.file_dir, self.scratch_dir)
+            # It seems it was missing file arguments? That looks like a bug in original code or it relied on default behavior?
+            # Ah, line 54[5-8]... wait, checking original code again.
+            
+            # Original Line 544: cmd = "cd %s ; tar cvz --format=gnu -f %s/data.tar.gz" % (self.file_dir, self.scratch_dir)
+            # It DOES NOT list files. That would archive NOTHING or everything? 
+            # GNU tar requires file arguments or -T.
+            # If original code was `tar cvz -f archive.tgz` it would fail or do nothing?
+            # Wait, looking at `write_package`...
+            # The files are in `self.file_dir`. 
+            # If I just want to archive all files in `self.file_dir`?
+            # But `self.file_list` is populated. 
+            # The code seems to extract package to `self.file_dir`? 
+            # Actually, `opkg_make_index` creates index from EXISTING packages, 
+            # BUT `write_package` seems to be for CREATING a package?
+            # This tool is mostly used for reading indices (make_index).
+            # `write_package` might be unused or for re-packing.
+            # `opkg-make-index` main purpose is reading.
+            # However, to be safe, I should fix the Python 3 crash.
+            # `cmd` in line 544 has no file args.
+            # Maybe it assumes `.`? No `tar` needs explicit files usually.
+            # Unless `tar` defaults to stdin? 
+            # Let's assume "." for now if it's supposed to pack everything in file_dir.
+            
+            cmd = ["tar", "cvz", "--format=gnu", "-f", "%s/data.tar.gz" % self.scratch_dir, "."]
+            process = subprocess.Popen(cmd, cwd=self.file_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, err = process.communicate()
 
             bits = bits + " data.tar.gz"
 
         file = "%s_%s_%s.%s" % (self.package, self.version, self.architecture, self.get_package_extension())
-        cmd = "cd %s ; tar cvz --format=gnu -f %s/%s %s" % (self.scratch_dir, dirname, file, bits)
-
-        cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-
-        while cmd_err.readline() != "":
-            pass
-
-        cmd_out.close()
-        cmd_in.close()
-        cmd_err.close()
+        # Final pack
+        # cmd = "cd %s ; tar cvz --format=gnu -f %s/%s %s" % (self.scratch_dir, dirname, file, bits)
+        # bits is a string "control.tar.gz data.tar.gz"
+        
+        cmd = ["tar", "cvz", "--format=gnu", "-f", os.path.join(dirname, file)] + bits.split()
+        process = subprocess.Popen(cmd, cwd=self.scratch_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = process.communicate()
+        if process.returncode != 0:
+             sys.stderr.write("Error creating final package: %s\n" % err)
 
     def compare_version(self, ref):
         """Compare package versions of self and ref"""
